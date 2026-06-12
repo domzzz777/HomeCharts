@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HomeCharts — Where smart investors find the dip</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📉</text></svg>" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #080e1a; color: #e2e8f0; margin: 0; min-height: 100vh; overflow-x: hidden; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+    /* ── Analysis loader animations ─────────────────────────────────────── */
+    @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes dash-anim {
+      0%   { stroke-dasharray: 10 170; stroke-dashoffset: 0; }
+      50%  { stroke-dasharray: 120 60; stroke-dashoffset: -40; }
+      100% { stroke-dasharray: 10 170; stroke-dashoffset: -188; }
+    }
+
+    /* ── Ticker ─────────────────────────────────────────────────────────── */
+    .ticker-wrap { width:100%; overflow:hidden; background:#0a0f1a; border-bottom:1px solid #1e293b; padding:7px 0; position:relative; z-index:200; }
+    .ticker-track { display:flex; gap:0; white-space:nowrap; animation:ticker-scroll 60s linear infinite; will-change:transform; }
+    .ticker-track:hover { animation-play-state:paused; }
+    @keyframes ticker-scroll { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+    .ticker-item { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:500; color:#94a3b8; padding:0 28px; cursor:pointer; transition:color .15s; text-decoration:none; }
+    .ticker-item:hover { color:#f1f5f9; }
+    .ticker-drop { color:#f87171; font-weight:700; }
+
+    /* ── Nav ─────────────────────────────────────────────────────────────── */
+    .nav { position:sticky; top:0; z-index:100; background:rgba(8,14,26,.92); backdrop-filter:blur(12px); border-bottom:1px solid rgba(30,41,59,.6); }
+
+    /* ── Hero ───────────────────────────────────────────────────────────── */
+    .hero { position:relative; min-height:92vh; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .hero-bg { position:absolute; inset:0; z-index:0; background:radial-gradient(ellipse 90% 70% at 50% -10%, rgba(59,130,246,.18) 0%, transparent 70%), radial-gradient(ellipse 60% 60% at 80% 80%, rgba(239,68,68,.08) 0%, transparent 60%), #080e1a; }
+    .hero-grid { position:absolute; inset:0; background-image:linear-gradient(rgba(30,41,59,.35) 1px, transparent 1px), linear-gradient(90deg, rgba(30,41,59,.35) 1px, transparent 1px); background-size:60px 60px; mask-image:radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%); }
+    .hero-orb { position:absolute; border-radius:50%; filter:blur(80px); animation:orb-drift 12s ease-in-out infinite alternate; }
+    @keyframes orb-drift { 0%{transform:translate(0,0) scale(1)} 100%{transform:translate(30px,-20px) scale(1.08)} }
+    .hero-content { position:relative; z-index:1; text-align:center; max-width:720px; padding:0 24px; }
+    .hero-badge { display:inline-flex; align-items:center; gap:7px; background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.25); color:#60a5fa; font-size:12px; font-weight:600; padding:5px 14px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; margin-bottom:28px; }
+    .live-dot { width:7px; height:7px; border-radius:50%; background:#22c55e; animation:pulse-dot 2s infinite; display:inline-block; }
+    @keyframes pulse-dot { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.5)} 70%{box-shadow:0 0 0 6px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+    .hero-title { font-size:clamp(42px,7vw,80px); font-weight:900; line-height:1.05; letter-spacing:-.03em; margin-bottom:22px; }
+    .hero-title .brand-home { color:#f1f5f9; }
+    .hero-title .brand-charts { color:#ef4444; }
+    .hero-tagline { font-size:clamp(18px,2.5vw,26px); color:#94a3b8; font-weight:400; line-height:1.5; margin-bottom:44px; }
+    .hero-tagline em { color:#cbd5e1; font-style:normal; font-weight:500; }
+
+    /* URL input bar */
+    .url-bar { display:flex; gap:0; max-width:580px; margin:0 auto 20px; background:#0d1626; border:1px solid #334155; border-radius:14px; overflow:hidden; transition:border-color .2s, box-shadow .2s; }
+    .url-bar:focus-within { border-color:#3b82f6; box-shadow:0 0 0 3px rgba(59,130,246,.15); }
+    .url-bar input { flex:1; background:transparent; border:none; outline:none; padding:16px 20px; font-size:14px; color:#e2e8f0; font-family:inherit; }
+    .url-bar input::placeholder { color:#475569; }
+    .url-bar button { background:#3b82f6; border:none; color:#fff; font-size:14px; font-weight:600; padding:14px 24px; cursor:pointer; transition:background .15s; white-space:nowrap; font-family:inherit; }
+    .url-bar button:hover { background:#2563eb; }
+    .hero-cta-browse { display:inline-flex; align-items:center; gap:7px; color:#64748b; font-size:14px; font-weight:500; text-decoration:none; transition:color .15s; }
+    .hero-cta-browse:hover { color:#94a3b8; }
+    .hero-cta-browse svg { transition:transform .15s; }
+    .hero-cta-browse:hover svg { transform:translateX(3px); }
+    .url-hint { font-size:11px; color:#334155; margin-bottom:32px; line-height:1.8; max-width:580px; margin-left:auto; margin-right:auto; text-align:center; }
+
+    /* ── Stats bar ───────────────────────────────────────────────────────── */
+    .stats-bar { background:#0d1626; border-top:1px solid #1e293b; border-bottom:1px solid #1e293b; }
+    .stat-item { text-align:center; padding:24px 12px; position:relative; }
+    .stat-item + .stat-item::before { content:''; position:absolute; left:0; top:25%; height:50%; width:1px; background:#1e293b; }
+    .stat-num { font-size:clamp(28px,3.5vw,40px); font-weight:800; line-height:1; letter-spacing:-.02em; }
+    .stat-lbl { font-size:11px; color:#475569; text-transform:uppercase; letter-spacing:.08em; font-weight:600; margin-top:5px; }
+
+    /* ── Section ─────────────────────────────────────────────────────────── */
+    .section { max-width:1200px; margin:0 auto; padding:80px 24px; }
+    .section-eyebrow { font-size:12px; color:#3b82f6; text-transform:uppercase; letter-spacing:.1em; font-weight:700; margin-bottom:10px; }
+    .section-title { font-size:clamp(28px,4vw,40px); font-weight:800; color:#f1f5f9; letter-spacing:-.02em; margin-bottom:8px; line-height:1.15; }
+    .section-sub { font-size:15px; color:#64748b; line-height:1.6; }
+
+    /* ── Market cards ────────────────────────────────────────────────────── */
+    .markets-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-top:44px; }
+    @media(max-width:900px){ .markets-grid { grid-template-columns:repeat(3,1fr); } }
+    @media(max-width:560px){ .markets-grid { grid-template-columns:repeat(2,1fr); } }
+    .market-card { position:relative; border-radius:18px; overflow:hidden; border:1px solid #1e293b; cursor:pointer; text-decoration:none; display:block; transition:transform .2s, border-color .2s, box-shadow .2s; min-height:260px; }
+    .market-card:hover { transform:translateY(-4px); border-color:#3b82f6; box-shadow:0 12px 40px rgba(59,130,246,.14); }
+    .market-card-bg { position:absolute; inset:0; background-size:cover; background-position:center; overflow:hidden; }
+    .market-card-overlay { position:absolute; inset:0; }
+    .market-card-content { position:relative; z-index:2; padding:20px; height:100%; display:flex; flex-direction:column; justify-content:space-between; }
+    .market-flag { font-size:32px; margin-bottom:8px; filter:drop-shadow(0 2px 8px rgba(0,0,0,.5)); }
+    .market-name { font-size:20px; font-weight:800; color:#f1f5f9; letter-spacing:-.01em; text-shadow:0 2px 8px rgba(0,0,0,.6); }
+    .market-sub { font-size:11px; color:#94a3b8; margin-top:2px; font-weight:500; text-shadow:0 1px 4px rgba(0,0,0,.7); }
+    .market-stats { margin-top:auto; padding-top:12px; border-top:1px solid rgba(255,255,255,.08); display:flex; flex-direction:column; gap:4px; }
+    .market-stat-row { display:flex; justify-content:space-between; align-items:center; }
+    .market-stat-key { font-size:11px; color:#94a3b8; font-weight:500; }
+    .market-stat-val { font-size:13px; font-weight:700; }
+    .market-drop-badge { position:absolute; top:14px; right:14px; z-index:3; background:rgba(239,68,68,.9); color:#fff; font-size:13px; font-weight:800; padding:4px 10px; border-radius:20px; letter-spacing:.01em; backdrop-filter:blur(4px); }
+    .market-no-data { font-size:11px; color:#475569; font-weight:500; }
+    .market-listings-count { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); color:#94a3b8; font-size:11px; font-weight:600; padding:3px 9px; border-radius:10px; }
+
+    /* Country gradient fallbacks */
+    .grad-georgia { background:linear-gradient(150deg,#0e1f35 0%,#162d48 50%,#1a3a5c 100%); }
+    .grad-albania  { background:linear-gradient(150deg,#1a0a0a 0%,#2d1010 50%,#3d1515 100%); }
+    .grad-malta    { background:linear-gradient(150deg,#1a1200 0%,#2e1e00 50%,#3d2b00 100%); }
+    .grad-greece   { background:linear-gradient(150deg,#071425 0%,#0e2040 50%,#153060 100%); }
+    .grad-spain    { background:linear-gradient(150deg,#1a0800 0%,#2d1200 50%,#3d1f00 100%); }
+
+    /* ── Recent drops ────────────────────────────────────────────────────── */
+    .drops-list { display:flex; flex-direction:column; gap:14px; margin-top:44px; }
+    .drop-row { display:flex; align-items:center; gap:16px; background:#0d1626; border:1px solid #1e293b; border-radius:16px; padding:14px 18px; transition:border-color .2s, background .2s; text-decoration:none; }
+    .drop-row:hover { border-color:#3b82f6; background:#0f1c30; }
+    .drop-thumb { width:72px; height:56px; border-radius:10px; overflow:hidden; flex-shrink:0; background:#1e293b; }
+    .drop-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+    .drop-thumb-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:26px; opacity:.3; }
+    .drop-info { flex:1; min-width:0; }
+    .drop-title { font-size:13px; font-weight:600; color:#cbd5e1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px; }
+    .drop-location { font-size:12px; color:#475569; display:flex; align-items:center; gap:5px; }
+    .drop-meta { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+    .drop-pct { font-size:18px; font-weight:800; color:#f87171; letter-spacing:-.01em; }
+    .drop-price { font-size:13px; font-weight:600; color:#94a3b8; }
+    .drop-ago { font-size:11px; color:#334155; font-weight:500; }
+    .arrow-right { color:#334155; font-size:16px; flex-shrink:0; transition:color .15s, transform .15s; }
+    .drop-row:hover .arrow-right { color:#3b82f6; transform:translateX(2px); }
+
+    /* ── Footer ─────────────────────────────────────────────────────────── */
+    .footer { border-top:1px solid #1e293b; background:#080e1a; padding:36px 24px; text-align:center; }
+
+    /* ── Toast ───────────────────────────────────────────────────────────── */
+    .toast { position:fixed; bottom:32px; left:50%; transform:translateX(-50%) translateY(80px); background:#0d1626; border:1px solid #3b82f6; color:#60a5fa; font-size:13px; font-weight:500; padding:12px 24px; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,.5); transition:transform .3s ease, opacity .3s; opacity:0; pointer-events:none; z-index:999; max-width:90vw; text-align:center; }
+    .toast.show { transform:translateX(-50%) translateY(0); opacity:1; }
+  </style>
+</head>
+<body>
+
+<!-- ── TICKER ──────────────────────────────────────────────────────────────── -->
+<div class="ticker-wrap" id="ticker-wrap">
+  <div class="ticker-track" id="ticker-track">
+    <span style="color:#334155;font-size:12px;padding:0 20px;">Loading live drops…</span>
+  </div>
+</div>
+
+<!-- ── NAV ─────────────────────────────────────────────────────────────────── -->
+<nav class="nav">
+  <div style="max-width:1200px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;">
+    <!-- Logo -->
+    <a href="/" style="display:flex;align-items:center;gap:2px;text-decoration:none;">
+      <img src="/static/logo.png" alt="HomeCharts" style="width:44px;height:44px;object-fit:contain;mix-blend-mode:screen;transform:translateX(6px);" />
+      <span style="font-size:20px;font-weight:900;letter-spacing:-.02em;color:#f1f5f9;font-family:'Inter',sans-serif;line-height:1;"><span style="color:#f1f5f9;">Home</span><span style="color:#ef4444;">Charts</span></span>
+    </a>
+    <!-- Nav links -->
+    <div style="display:flex;align-items:center;gap:8px;">
+      <a href="#markets" data-i18n="nav_markets" style="font-size:13px;color:#64748b;text-decoration:none;padding:6px 12px;border-radius:8px;transition:color .15s;" onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#64748b'">Markets</a>
+      <a href="#drops" data-i18n="nav_drops" style="font-size:13px;color:#64748b;text-decoration:none;padding:6px 12px;border-radius:8px;transition:color .15s;" onmouseover="this.style.color='#e2e8f0'" onmouseout="this.style.color='#64748b'">Price Drops</a>
+
+      <!-- Language switcher -->
+      <div style="position:relative;display:inline-block;" id="lang-switcher">
+        <button onclick="toggleLangMenu()" style="display:flex;align-items:center;gap:5px;background:#0d1626;border:1px solid #334155;color:#94a3b8;font-size:13px;font-weight:500;padding:7px 12px;border-radius:8px;cursor:pointer;font-family:inherit;transition:border-color .15s,color .15s;" id="lang-btn">
+          <span id="lang-flag">🇬🇧</span>
+          <span id="lang-code">EN</span>
+          <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="opacity:.5;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+        </button>
+        <div id="lang-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0d1626;border:1px solid #1e293b;border-radius:10px;overflow:hidden;min-width:120px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.4);">
+          <button onclick="setLang('en')" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 14px;background:none;border:none;color:#e2e8f0;font-size:13px;cursor:pointer;font-family:inherit;transition:background .1s;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">🇬🇧 English</button>
+          <button onclick="setLang('pl')" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 14px;background:none;border:none;color:#e2e8f0;font-size:13px;cursor:pointer;font-family:inherit;transition:background .1s;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">🇵🇱 Polski</button>
+          <button onclick="setLang('es')" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 14px;background:none;border:none;color:#e2e8f0;font-size:13px;cursor:pointer;font-family:inherit;transition:background .1s;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">🇪🇸 Español</button>
+        </div>
+      </div>
+
+      <a href="/app" data-i18n="nav_dashboard" style="display:inline-flex;align-items:center;gap:6px;background:#3b82f6;color:#fff;font-size:13px;font-weight:600;padding:8px 18px;border-radius:10px;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+        Open Dashboard
+        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+      </a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── HERO ────────────────────────────────────────────────────────────────── -->
+<section class="hero" id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <!-- Ambient orbs -->
+  <div class="hero-orb" style="width:500px;height:500px;background:radial-gradient(circle,rgba(59,130,246,.12),transparent 70%);top:-100px;left:-100px;animation-duration:14s;"></div>
+  <div class="hero-orb" style="width:400px;height:400px;background:radial-gradient(circle,rgba(239,68,68,.07),transparent 70%);bottom:-80px;right:-80px;animation-duration:10s;animation-direction:alternate-reverse;"></div>
+
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="live-dot"></span>
+      <span data-i18n="hero_badge">Live tracking · 5 markets</span>
+    </div>
+
+    <h1 class="hero-title">
+      <span class="brand-home">Home</span><span class="brand-charts">Charts</span>
+    </h1>
+
+    <p class="hero-tagline" data-i18n="hero_tagline">
+      Where <em>smart investors</em> find the dip.<br/>
+      Real estate price drops in emerging markets — tracked daily.
+    </p>
+
+    <!-- URL input -->
+    <p style="font-size:11px;font-weight:500;color:#3b82f6;letter-spacing:.18em;text-transform:uppercase;margin-bottom:12px;font-family:'Inter',sans-serif;" data-i18n="hero_track_label">— Track your listing below —</p>
+    <div class="url-bar" id="url-bar">
+      <input type="url" id="url-input" data-i18n-placeholder="hero_placeholder" placeholder="Paste a listing URL to start tracking…" autocomplete="off" />
+      <button onclick="handleUrlSubmit()" data-i18n="hero_btn">Track it →</button>
+    </div>
+    <p class="url-hint">
+      <span style="display:block;font-size:9px;color:#1e293b;text-transform:uppercase;letter-spacing:.14em;font-weight:600;margin-bottom:6px;">websites we support</span>
+      myhome.ge · ss.ge · imoti.net · maltapark.com · century21albania.com · tranio.com · idealista.com · fotocasa.es · spitogatos.gr · xe.gr · remax.com.mt · dhimmobiliare.it · otodom.pl · olx.pl · sreality.cz · ingatlan.com · imovirtual.com · casa.pt · rightmove.co.uk · immowelt.de · seloger.com · leboncoin.fr · immobiliare.it · habitaclia.com · pisos.com · kyero.com · propertypal.com · daft.ie · myhome.ie · property24.com
+    </p>
+
+    <!-- Track result card (hidden until URL submitted) -->
+    <div id="track-result" style="display:none;"></div>
+
+    <a href="#drops" class="hero-cta-browse">
+      Browse price drops
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+    </a>
+  </div>
+</section>
+
+<!-- ── LIVE STATS BAR ───────────────────────────────────────────────────────── -->
+<div class="stats-bar">
+  <div style="max-width:1200px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);">
+    <div class="stat-item">
+      <div class="stat-num" id="stat-tracked" style="color:#60a5fa;">—</div>
+      <div class="stat-lbl" data-i18n="stat_tracked">Listings tracked</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="stat-drops" style="color:#f87171;">—</div>
+      <div class="stat-lbl" data-i18n="stat_drops">Active price drops</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="stat-avg" style="color:#fb923c;">—</div>
+      <div class="stat-lbl" data-i18n="stat_avg">Avg drop</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num" id="stat-biggest" style="color:#b91c1c;">—</div>
+      <div class="stat-lbl" data-i18n="stat_biggest">Biggest drop</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── EXPLORE MARKETS ─────────────────────────────────────────────────────── -->
+<div id="markets">
+  <div class="section" style="padding-bottom:60px;">
+    <p class="section-eyebrow" data-i18n="markets_eyebrow">Explore</p>
+    <h2 class="section-title" data-i18n="markets_title">Markets we track</h2>
+    <p class="section-sub" data-i18n="markets_sub">Emerging destinations where prices are moving — before the crowd arrives.</p>
+
+    <div class="markets-grid" id="markets-grid">
+      <!-- filled by JS -->
+      <div style="height:260px;border-radius:18px;background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;"></div>
+      <div style="height:260px;border-radius:18px;background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;animation-delay:.1s;"></div>
+      <div style="height:260px;border-radius:18px;background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;animation-delay:.2s;"></div>
+      <div style="height:260px;border-radius:18px;background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;animation-delay:.3s;"></div>
+      <div style="height:260px;border-radius:18px;background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;animation-delay:.4s;"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:32px;">
+      <a href="/app" style="display:inline-flex;align-items:center;gap:8px;border:1px solid #334155;color:#94a3b8;font-size:14px;font-weight:500;padding:11px 24px;border-radius:12px;text-decoration:none;transition:border-color .15s,color .15s;" onmouseover="this.style.borderColor='#3b82f6';this.style.color='#60a5fa'" onmouseout="this.style.borderColor='#334155';this.style.color='#94a3b8'">
+        <span data-i18n="markets_view_all">View all listings in dashboard</span>
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ── RECENT DROPS ────────────────────────────────────────────────────────── -->
+<div id="drops" style="background:linear-gradient(180deg,#0a1020 0%,#080e1a 100%);border-top:1px solid #1e293b;">
+  <div class="section">
+    <p class="section-eyebrow" data-i18n="drops_eyebrow">Live Feed</p>
+    <h2 class="section-title" data-i18n="drops_title">Recent price drops</h2>
+    <p class="section-sub" data-i18n="drops_sub">Latest validated drops across all markets — updated every hour.</p>
+
+    <div class="drops-list" id="drops-list">
+      <!-- skeleton rows -->
+      <div style="height:84px;border-radius:16px;background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;"></div>
+      <div style="height:84px;border-radius:16px;background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;animation-delay:.08s;"></div>
+      <div style="height:84px;border-radius:16px;background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;animation-delay:.16s;"></div>
+      <div style="height:84px;border-radius:16px;background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;animation-delay:.24s;"></div>
+      <div style="height:84px;border-radius:16px;background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;animation-delay:.32s;"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:32px;">
+      <a href="/app" style="display:inline-flex;align-items:center;gap:8px;background:#3b82f6;color:#fff;font-size:14px;font-weight:600;padding:13px 28px;border-radius:12px;text-decoration:none;transition:background .15s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+        <span data-i18n="drops_open_dashboard">Open full dashboard</span>
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+      </a>
+    </div>
+  </div>
+</div>
+
+<!-- ── FAQ ────────────────────────────────────────────────────────────────── -->
+<div style="border-top:1px solid #1e293b;background:#080e1a;">
+  <div class="section" style="padding-bottom:80px;">
+    <p class="section-eyebrow" data-i18n="faq_eyebrow">FAQ</p>
+    <h2 class="section-title" data-i18n="faq_title">Before you begin.</h2>
+
+    <div id="faq-list" style="margin-top:44px;display:flex;flex-direction:column;gap:2px;">
+
+      <!-- item helper rendered by JS below — static fallback here -->
+    </div>
+  </div>
+</div>
+
+<!-- ── FOOTER ──────────────────────────────────────────────────────────────── -->
+<footer class="footer">
+  <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
+    <img src="/static/logo.png" alt="HomeCharts" style="width:28px;height:28px;object-fit:contain;mix-blend-mode:screen;" />
+    <span style="font-size:16px;font-weight:800;color:#f1f5f9;">Home<span style="color:#ef4444;">Charts</span></span>
+  </div>
+  <p style="font-size:12px;color:#334155;margin-top:6px;" data-i18n="footer_sub">Tracking real estate price drops in emerging markets. Data updated daily.</p>
+  <p style="font-size:11px;color:#1e293b;margin-top:8px;">© 2026 HomeCharts</p>
+</footer>
+
+<!-- ── TOAST ───────────────────────────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<!-- ── CSS shimmer ─────────────────────────────────────────────────────────── -->
+<style>
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+  /* ── Track result card ────────────────────────────────────────────────── */
+  #track-result {
+    max-width: 580px; margin: 20px auto 0;
+    background: #0d1626; border: 1px solid #1e293b; border-radius: 18px;
+    overflow: hidden; animation: slideDown .35s ease;
+  }
+  @keyframes slideDown {
+    from { opacity:0; transform:translateY(-14px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .tr-gallery { position:relative; height:220px; background:#0b1120; overflow:hidden; }
+  .tr-gallery img { width:100%; height:100%; object-fit:cover; display:block; }
+  .tr-gallery-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:56px; opacity:.15; }
+  .tr-gallery-nav { position:absolute; top:50%; transform:translateY(-50%); width:32px; height:32px; background:rgba(8,14,26,.7); border:none; color:#e2e8f0; border-radius:7px; font-size:17px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; }
+  .tr-gallery:hover .tr-gallery-nav { opacity:1; }
+  .tr-gallery-nav.prev { left:8px; }
+  .tr-gallery-nav.next { right:8px; }
+  .tr-gallery-counter { position:absolute; bottom:8px; right:8px; background:rgba(8,14,26,.72); border:1px solid rgba(255,255,255,.1); color:#cbd5e1; font-size:11px; font-weight:500; padding:3px 8px; border-radius:6px; }
+  .tr-thumbs { display:flex; gap:6px; padding:8px 12px; background:#0b1120; border-bottom:1px solid #1e293b; overflow-x:auto; scrollbar-width:thin; }
+  .tr-thumb { width:60px; height:44px; flex-shrink:0; border-radius:5px; overflow:hidden; cursor:pointer; border:2px solid transparent; transition:border-color .15s; }
+  .tr-thumb.active { border-color:#3b82f6; }
+  .tr-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .tr-body { padding:18px 20px; }
+  .tr-title { font-size:15px; font-weight:600; color:#f1f5f9; line-height:1.4; margin-bottom:10px; }
+  .tr-meta { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .tr-chip { font-size:12px; color:#94a3b8; background:#1e293b; padding:4px 10px; border-radius:8px; }
+  .tr-price { font-size:24px; font-weight:800; color:#f1f5f9; letter-spacing:-.02em; margin-bottom:16px; }
+  .tr-chart-wrap { position:relative; height:160px; margin-bottom:14px; }
+  .tr-actions { display:flex; gap:8px; }
+  .tr-btn { flex:1; padding:10px; border-radius:10px; font-size:13px; font-weight:600; text-align:center; cursor:pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:6px; transition:background .15s,color .15s; }
+  .tr-btn-primary { background:#3b82f6; border:none; color:#fff; }
+  .tr-btn-primary:hover { background:#2563eb; }
+  .tr-btn-secondary { background:#1e293b; border:1px solid #334155; color:#94a3b8; }
+  .tr-btn-secondary:hover { background:#334155; color:#e2e8f0; }
+  .tr-drop-badge { position:absolute; top:10px; left:10px; background:rgba(239,68,68,.92); color:#fff; font-size:13px; font-weight:700; padding:4px 10px; border-radius:20px; }
+  .tr-new-badge { position:absolute; top:10px; left:10px; background:rgba(34,197,94,.9); color:#fff; font-size:12px; font-weight:700; padding:4px 10px; border-radius:20px; }
+</style>
+
+<script>
+// ── Helpers ────────────────────────────────────────────────────────────────
+const COUNTRY_FLAGS = { Georgia:'🇬🇪', Albania:'🇦🇱', Malta:'🇲🇹', Greece:'🇬🇷', Spain:'🇪🇸' };
+const COUNTRY_GRADS = {
+  Georgia: 'grad-georgia',
+  Albania: 'grad-albania',
+  Malta:   'grad-malta',
+  Greece:  'grad-greece',
+  Spain:   'grad-spain',
+};
+
+// Country card photos — all URLs verified 200 OK
+const COUNTRY_IMAGES = {
+  // picsum seed-based (always reliable, consistent per seed)
+  Georgia: 'https://picsum.photos/seed/batumi-sea/800/560',
+  Albania: 'https://picsum.photos/seed/albanian-riviera/800/560',
+  // Unsplash direct (verified 200)
+  Malta:   'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&q=80&fit=crop',
+  Greece:  'https://images.unsplash.com/photo-1570077188670-e3a8d69ac5ff?w=800&q=80&fit=crop',
+  Spain:   'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800&q=80&fit=crop',
+};
+
+function proxyImg(url) {
+  if (!url) return null;
+  if (url.startsWith('/api/proxy-image')) return url;
+  if (url.includes('tranio') || url.includes('staticprop')) {
+    return '/api/proxy-image?url=' + encodeURIComponent(url);
+  }
+  return url;
+}
+
+function fmtPrice(p, cur) {
+  if (!p) return '—';
+  return (cur === 'USD' ? '$' : '€') + Math.round(p).toLocaleString();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+// ── URL submit + result card ────────────────────────────────────────────────
+let _trChart = null;
+let _trImgs  = [];
+let _trIdx   = 0;
+
+function _trSetImg(idx) {
+  if (!_trImgs.length) return;
+  _trIdx = (idx + _trImgs.length) % _trImgs.length;
+  const main = document.getElementById('tr-main-img');
+  if (main) main.src = proxyImg(_trImgs[_trIdx]);
+  // counter
+  const ctr = document.getElementById('tr-counter');
+  if (ctr) ctr.textContent = `${_trIdx + 1} / ${_trImgs.length}`;
+  // thumbs
+  document.querySelectorAll('.tr-thumb').forEach((t, i) => {
+    t.classList.toggle('active', i === _trIdx);
+  });
+}
+
+function renderTrackResult(l) {
+  const card    = document.getElementById('track-result');
+  const flag    = COUNTRY_FLAGS[l.country] || '🌍';
+  const imgs    = (l.images && l.images.length) ? l.images : (l.image_url ? [l.image_url] : []);
+  _trImgs       = imgs;
+  _trIdx        = 0;
+  const history = l.history || [];
+  const hasDrop = l.drop_pct && l.drop_pct < -0.5;
+  const abs     = hasDrop ? Math.abs(l.drop_pct).toFixed(1) : null;
+
+  // currency format
+  const sym  = (l.currency === 'PLN') ? 'zł' : (l.currency === 'EUR' ? '€' : (l.currency === 'GBP' ? '£' : '$'));
+  const fmtP = p => p ? (l.currency === 'PLN' ? Math.round(p).toLocaleString() + ' ' + sym : sym + Math.round(p).toLocaleString()) : '—';
+
+  // specs chips
+  const chips = [
+    l.country && `${flag} ${l.country}`,
+    l.city && l.city !== l.country && l.city,
+    l.rooms && `${l.rooms} rooms`,
+    l.area_sqm && `${l.area_sqm} m²`,
+    l.portal,
+  ].filter(Boolean).map(c => `<span class="tr-chip">${c}</span>`).join('');
+
+  // gallery HTML
+  const galleryHTML = imgs.length
+    ? `<img id="tr-main-img" src="${proxyImg(imgs[0])}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;" onerror="this.style.display='none'" />
+       ${hasDrop ? `<div class="tr-drop-badge">−${abs}%</div>` : `<div class="tr-new-badge">📡 Now tracking</div>`}
+       ${imgs.length > 1 ? `<span class="tr-gallery-counter" id="tr-counter">1 / ${imgs.length}</span>
+         <button class="tr-gallery-nav prev" onclick="_trSetImg(_trIdx-1)">‹</button>
+         <button class="tr-gallery-nav next" onclick="_trSetImg(_trIdx+1)">›</button>` : ''}`
+    : `<div class="tr-gallery-placeholder">🏠</div>`;
+
+  // thumbs (up to 6)
+  const thumbsHTML = imgs.length > 1
+    ? `<div class="tr-thumbs">${imgs.slice(0,8).map((img,i) =>
+        `<div class="tr-thumb${i===0?' active':''}" onclick="_trSetImg(${i})">
+           <img src="${proxyImg(img)}" alt="" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentNode.style.display='none'" />
+         </div>`).join('')}</div>`
+    : '';
+
+  card.innerHTML = `
+    <div class="tr-gallery">${galleryHTML}</div>
+    ${thumbsHTML}
+    <div class="tr-body">
+      <div class="tr-title">${l.title || 'Property listing'}</div>
+      <div class="tr-meta">${chips}</div>
+      <div class="tr-price">
+        ${fmtP(l.price)}
+        ${hasDrop && l.max_price ? `<span style="font-size:14px;color:#64748b;text-decoration:line-through;font-weight:400;margin-left:8px;">${fmtP(l.max_price)}</span>` : ''}
+      </div>
+      <div class="tr-chart-wrap">
+        <canvas id="tr-chart"></canvas>
+      </div>
+      <!-- Email alert signup -->
+      <div style="margin-bottom:14px;">
+        <div style="font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px;" data-i18n="alert_label">🔔 Get notified when price drops</div>
+        <div style="display:flex;gap:0;background:#0b1120;border:1px solid #334155;border-radius:10px;overflow:hidden;transition:border-color .2s;" id="tr-alert-bar">
+          <input type="email" id="tr-email-input" placeholder="${(TRANSLATIONS[_currentLang]||TRANSLATIONS.en).alert_placeholder}"
+            style="flex:1;background:transparent;border:none;outline:none;padding:11px 14px;font-size:13px;color:#e2e8f0;font-family:inherit;"
+            onfocus="document.getElementById('tr-alert-bar').style.borderColor='#3b82f6'"
+            onblur="document.getElementById('tr-alert-bar').style.borderColor='#334155'" />
+          <button onclick="subscribeAlert(${l.id})"
+            style="background:#22c55e;border:none;color:#fff;font-size:13px;font-weight:600;padding:10px 18px;cursor:pointer;font-family:inherit;transition:background .15s;white-space:nowrap;"
+            onmouseover="this.style.background='#16a34a'" onmouseout="this.style.background='#22c55e'">
+            ${(TRANSLATIONS[_currentLang]||TRANSLATIONS.en).alert_btn}
+          </button>
+        </div>
+        <div id="tr-alert-msg" style="font-size:12px;margin-top:6px;display:none;"></div>
+      </div>
+      <div class="tr-actions">
+        <a href="${l.url}" target="_blank" rel="noopener" class="tr-btn tr-btn-secondary">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"/></svg>
+          View listing
+        </a>
+        <a href="/app" class="tr-btn tr-btn-primary">
+          Open in Dashboard →
+        </a>
+      </div>
+    </div>
+  `;
+
+  card.style.display = 'block';
+
+  // ── Chart ────────────────────────────────────────────────────────────────
+  if (_trChart) { _trChart.destroy(); _trChart = null; }
+  const ctx = document.getElementById('tr-chart');
+  if (!ctx) return;
+
+  if (history.length >= 2) {
+    _trChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: history.map(h => new Date(h.recorded_at).toLocaleDateString('en-GB', {day:'numeric',month:'short'})),
+        datasets: [{
+          label: `Price (${l.currency})`,
+          data: history.map(h => h.price),
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59,130,246,.08)',
+          pointBackgroundColor: '#3b82f6',
+          pointRadius: 4,
+          fill: true,
+          tension: 0.35,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#1e293b' } },
+          y: { ticks: { color: '#64748b', font: { size: 11 }, callback: v => sym + v.toLocaleString() }, grid: { color: '#1e293b' } },
+        },
+      },
+    });
+  } else {
+    // Single point — show start marker
+    const p0 = history[0];
+    _trChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: [new Date().toLocaleDateString('en-GB', {day:'numeric',month:'short'}), '→'],
+        datasets: [{
+          label: 'Starting price',
+          data: [p0 ? p0.price : l.price, null],
+          borderColor: '#22c55e',
+          backgroundColor: 'rgba(34,197,94,.08)',
+          pointBackgroundColor: '#22c55e',
+          pointRadius: [6, 0],
+          borderDash: [5, 5],
+          fill: true,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: ctx => `Starting: ${sym}${ctx.parsed.y?.toLocaleString() ?? '—'}` } },
+        },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#1e293b' } },
+          y: { ticks: { color: '#64748b', font: { size: 11 }, callback: v => sym + (v||0).toLocaleString() }, grid: { color: '#1e293b' } },
+        },
+      },
+    });
+    // overlay text
+    ctx.parentElement.insertAdjacentHTML('beforeend',
+      `<div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-size:11px;color:#475569;white-space:nowrap;">
+         📡 Tracking started · price history will build up daily
+       </div>`);
+  }
+
+  // scroll card into view
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ── Analysis loading overlay ──────────────────────────────────────────────────
+const ANALYSIS_PHASES = [
+  { pct: 8,  label: 'Fetching listing data…' },
+  { pct: 20, label: 'Parsing property details…' },
+  { pct: 35, label: 'Extracting price history…' },
+  { pct: 50, label: 'Detecting listing origin…' },
+  { pct: 63, label: 'Running AI price validation…' },
+  { pct: 75, label: 'Comparing with market data…' },
+  { pct: 85, label: 'Checking for price manipulations…' },
+  { pct: 93, label: 'Generating price chart…' },
+  { pct: 99, label: 'Finalising analysis…' },
+];
+
+function showAnalysisLoader() {
+  const existing = document.getElementById('analysis-loader');
+  if (existing) existing.remove();
+
+  const el = document.createElement('div');
+  el.id = 'analysis-loader';
+  el.innerHTML = `
+    <div style="
+      position:fixed;inset:0;z-index:9999;
+      background:rgba(6,10,22,.88);backdrop-filter:blur(12px);
+      display:flex;align-items:center;justify-content:center;
+    ">
+      <div style="
+        background:#0d1626;border:1px solid #1e293b;border-radius:24px;
+        padding:44px 48px;max-width:420px;width:90%;text-align:center;
+        box-shadow:0 32px 80px rgba(0,0,0,.6);
+      ">
+        <!-- Spinner -->
+        <div style="position:relative;width:72px;height:72px;margin:0 auto 28px;">
+          <svg viewBox="0 0 72 72" width="72" height="72" style="animation:spin-slow 2s linear infinite;display:block;">
+            <circle cx="36" cy="36" r="30" fill="none" stroke="#1e293b" stroke-width="5"/>
+            <circle cx="36" cy="36" r="30" fill="none" stroke="url(#grad-spin)" stroke-width="5"
+              stroke-linecap="round" stroke-dasharray="94 94" stroke-dashoffset="0"
+              style="animation:dash-anim 1.8s ease-in-out infinite;"/>
+            <defs>
+              <linearGradient id="grad-spin" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#3b82f6"/>
+                <stop offset="100%" stop-color="#ef4444"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <div style="
+            position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+            font-size:22px;
+          ">📡</div>
+        </div>
+
+        <!-- Title -->
+        <div style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:6px;">
+          Analysing listing
+        </div>
+        <div style="font-size:13px;color:#475569;margin-bottom:28px;">
+          AI-powered deep scan in progress
+        </div>
+
+        <!-- Phase label -->
+        <div id="analysis-phase-label" style="
+          font-size:13px;color:#60a5fa;font-weight:500;
+          min-height:20px;margin-bottom:14px;transition:opacity .3s;
+        ">Fetching listing data…</div>
+
+        <!-- Progress bar -->
+        <div style="background:#0b1120;border-radius:99px;height:6px;overflow:hidden;margin-bottom:12px;">
+          <div id="analysis-progress-bar" style="
+            height:100%;width:0%;border-radius:99px;
+            background:linear-gradient(90deg,#3b82f6,#ef4444);
+            transition:width .6s ease;
+          "></div>
+        </div>
+
+        <!-- Timer -->
+        <div style="font-size:11px;color:#334155;" id="analysis-timer">0s</div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+}
+
+function hideAnalysisLoader() {
+  const el = document.getElementById('analysis-loader');
+  if (!el) return;
+  el.style.transition = 'opacity .4s';
+  el.style.opacity = '0';
+  setTimeout(() => el.remove(), 400);
+}
+
+async function handleUrlSubmit() {
+  const input = document.getElementById('url-input');
+  const btn   = document.querySelector('#url-bar button');
+  const val   = input.value.trim();
+
+  if (!val) { input.focus(); return; }
+  if (!val.startsWith('http')) {
+    showToast('⚠️ Please paste a full URL starting with https://');
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = '⏳';
+  input.disabled  = true;
+  document.getElementById('track-result').style.display = 'none';
+
+  // Show loader overlay
+  showAnalysisLoader();
+
+  // Kick off API call in parallel with the fake progress animation
+  const apiPromise = fetch('/api/track-url', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ url: val }),
+  }).then(r => r.json().then(d => ({ ok: r.ok, data: d })));
+
+  // Animate progress over 15 seconds
+  const TOTAL_MS   = 15000;
+  const startTime  = Date.now();
+  let phaseIdx     = 0;
+  let animDone     = false;
+
+  const animInterval = setInterval(() => {
+    const elapsed = Date.now() - startTime;
+    const pct     = Math.min(99, (elapsed / TOTAL_MS) * 99);
+
+    const bar   = document.getElementById('analysis-progress-bar');
+    const label = document.getElementById('analysis-phase-label');
+    const timer = document.getElementById('analysis-timer');
+    if (!bar) { clearInterval(animInterval); return; }
+
+    bar.style.width = pct + '%';
+    if (timer) timer.textContent = Math.floor(elapsed / 1000) + 's';
+
+    // Advance phase label
+    while (phaseIdx < ANALYSIS_PHASES.length - 1 && pct >= ANALYSIS_PHASES[phaseIdx + 1].pct) {
+      phaseIdx++;
+      if (label) {
+        label.style.opacity = '0';
+        setTimeout(() => {
+          label.textContent = ANALYSIS_PHASES[phaseIdx].label;
+          label.style.opacity = '1';
+        }, 150);
+      }
+    }
+
+    if (elapsed >= TOTAL_MS) {
+      clearInterval(animInterval);
+      animDone = true;
+    }
+  }, 100);
+
+  try {
+    // Wait for BOTH: minimum 15s AND API response
+    const [apiResult] = await Promise.all([
+      apiPromise,
+      new Promise(res => setTimeout(res, TOTAL_MS)),
+    ]);
+
+    clearInterval(animInterval);
+
+    // Snap bar to 100%
+    const bar = document.getElementById('analysis-progress-bar');
+    const label = document.getElementById('analysis-phase-label');
+    if (bar) bar.style.width = '100%';
+    if (label) { label.style.opacity='0'; setTimeout(()=>{ label.textContent='✅ Analysis complete'; label.style.opacity='1'; label.style.color='#22c55e'; }, 150); }
+
+    await new Promise(res => setTimeout(res, 600));
+    hideAnalysisLoader();
+
+    if (!apiResult.ok) {
+      showToast('❌ ' + (apiResult.data.detail || 'Could not extract listing data.'));
+      return;
+    }
+
+    input.value = '';
+    renderTrackResult(apiResult.data);
+    setTimeout(loadDrops, 1000);
+
+  } catch (e) {
+    clearInterval(animInterval);
+    hideAnalysisLoader();
+    showToast('❌ Network error — is the server running?');
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = (TRANSLATIONS[_currentLang] || TRANSLATIONS.en).track_btn_default;
+    input.disabled  = false;
+  }
+}
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleUrlSubmit();
+});
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const s = await fetch('/api/stats').then(r => r.json());
+    animateCount('stat-tracked', s.total_tracked || 0, '');
+    animateCount('stat-drops',   s.active_drops   || 0, '');
+    document.getElementById('stat-avg').textContent     = s.avg_drop_pct     ? s.avg_drop_pct.toFixed(1)     + '%' : '—';
+    document.getElementById('stat-biggest').textContent = s.biggest_drop_pct ? s.biggest_drop_pct.toFixed(1) + '%' : '—';
+  } catch (e) { console.warn('stats failed', e); }
+}
+
+function animateCount(id, target, suffix) {
+  const el = document.getElementById(id);
+  const start = 0, dur = 1200;
+  const startTime = performance.now();
+  function step(now) {
+    const p = Math.min((now - startTime) / dur, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(ease * target) + suffix;
+    if (p < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ── Markets ────────────────────────────────────────────────────────────────
+async function loadMarkets() {
+  try {
+    const markets = await fetch('/api/markets').then(r => r.json());
+    const grid = document.getElementById('markets-grid');
+    grid.innerHTML = '';
+
+    markets.forEach(m => {
+      const gradClass = COUNTRY_GRADS[m.country] || 'grad-georgia';
+      const hasDrops  = m.active_drops > 0;
+      const avgDip    = m.avg_drop_pct ? Math.abs(m.avg_drop_pct).toFixed(1) : null;
+
+      // Priority: curated country photo > sample from DB > CSS gradient
+      const countryImg = COUNTRY_IMAGES[m.country] || null;
+
+      const card = document.createElement('a');
+      card.href = `/app?country=${encodeURIComponent(m.country)}`;
+      card.className = 'market-card';
+
+      // Background: first try curated photo, fall back to gradient via onerror
+      const bgDiv = countryImg
+        ? `<div class="market-card-bg ${gradClass}" id="bg-${m.country}">
+             <img src="${countryImg}" alt="${m.country}"
+               style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .4s;"
+               onerror="this.style.display='none'" />
+           </div>`
+        : `<div class="market-card-bg ${gradClass}"></div>`;
+
+      card.innerHTML = `
+        ${bgDiv}
+        <div class="market-card-overlay" style="background:linear-gradient(to bottom, rgba(8,14,26,.15) 0%, rgba(8,14,26,.78) 60%, rgba(8,14,26,.95) 100%);"></div>
+        ${hasDrops && avgDip ? `<div class="market-drop-badge" title="Average price drop">avg −${avgDip}%</div>` : ''}
+        <div class="market-card-content">
+          <div>
+            <div class="market-flag">${m.flag}</div>
+            <div class="market-name">${m.country}</div>
+            <div class="market-sub">${m.subtitle}</div>
+          </div>
+          <div class="market-stats">
+            <div class="market-stat-row">
+              <span class="market-stat-key">Active drops</span>
+              <span class="market-stat-val" style="color:${hasDrops ? '#f87171' : '#475569'}">${hasDrops ? m.active_drops : '—'}</span>
+            </div>
+            <div class="market-stat-row">
+              <span class="market-stat-key">Tracked</span>
+              <span class="market-listings-count">${m.total_listings} listings</span>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Scale the photo on card hover
+      card.addEventListener('mouseenter', () => {
+        const img = card.querySelector('.market-card-bg img');
+        if (img) img.style.transform = 'scale(1.06)';
+      });
+      card.addEventListener('mouseleave', () => {
+        const img = card.querySelector('.market-card-bg img');
+        if (img) img.style.transform = 'scale(1)';
+      });
+
+      grid.appendChild(card);
+    });
+
+    if (!markets.length) {
+      grid.innerHTML = '<p style="color:#475569;font-size:14px;grid-column:1/-1;text-align:center;padding:40px 0;">No market data yet — run the scraper to populate.</p>';
+    }
+  } catch (e) {
+    console.warn('markets failed', e);
+    document.getElementById('markets-grid').innerHTML = '<p style="color:#475569;grid-column:1/-1;text-align:center;padding:40px 0;">Could not load market data.</p>';
+  }
+}
+
+// ── Recent Drops ───────────────────────────────────────────────────────────
+async function loadDrops() {
+  try {
+    const listings = await fetch('/api/listings?sort=drop').then(r => r.json());
+    const withDrop = listings.filter(l => l.drop_pct < -0.5);
+
+    // Build a spread across drop-% brackets so every range is represented
+    const brackets = [
+      { label: '-3% – -7%',   min: 3,  max: 7,  picks: 2 },
+      { label: '-7% – -15%',  min: 7,  max: 15, picks: 2 },
+      { label: '-15% – -25%', min: 15, max: 25, picks: 2 },
+      { label: '-25% – -40%', min: 25, max: 40, picks: 2 },
+      { label: '-40%+',       min: 40, max: 999, picks: 2 },
+    ];
+
+    const seen = new Set();
+    const drops = [];
+    brackets.forEach(({ min, max, picks }) => {
+      const bucket = withDrop
+        .filter(l => {
+          const abs = Math.abs(l.drop_pct);
+          return abs >= min && abs < max && !seen.has(l.id);
+        })
+        // within bracket: randomise slightly so it's not always same listing on refresh
+        .sort((a, b) => (Math.random() > .5 ? 1 : -1))
+        .slice(0, picks);
+      bucket.forEach(l => { seen.add(l.id); drops.push(l); });
+    });
+
+    // Fill any remaining slots from unseen drops (small drops first for variety)
+    const remainder = withDrop
+      .filter(l => !seen.has(l.id))
+      .sort((a, b) => b.drop_pct - a.drop_pct); // ascending abs (smallest first)
+    for (const l of remainder) {
+      if (drops.length >= 10) break;
+      drops.push(l);
+    }
+
+    // Sort final list by drop % for a clean display
+    drops.sort((a, b) => b.drop_pct - a.drop_pct);
+    const list = document.getElementById('drops-list');
+    list.innerHTML = '';
+
+    if (!drops.length) {
+      list.innerHTML = '<p style="color:#475569;text-align:center;padding:40px 0;">No price drops found yet — check back after the next scrape.</p>';
+      return;
+    }
+
+    drops.forEach(l => {
+      const imgs = l.images && l.images.length ? l.images : (l.image_url ? [l.image_url] : []);
+      const imgUrl = imgs[0] ? proxyImg(imgs[0]) : null;
+      const flag = COUNTRY_FLAGS[l.country] || '🌍';
+
+      // time ago
+      let ago = '';
+      if (l.last_seen_at) {
+        const diff = (Date.now() - new Date(l.last_seen_at)) / 60000;
+        if (diff < 60) ago = Math.round(diff) + 'm ago';
+        else if (diff < 1440) ago = Math.round(diff / 60) + 'h ago';
+        else ago = Math.round(diff / 1440) + 'd ago';
+      }
+
+      const row = document.createElement('a');
+      row.href = l.url || '#';
+      row.target = '_blank';
+      row.rel = 'noopener';
+      row.className = 'drop-row';
+
+      const abs = Math.abs(l.drop_pct);
+      const dropColor = abs >= 20 ? '#ef4444' : '#f59e0b';
+
+      row.innerHTML = `
+        <div class="drop-thumb">
+          ${imgUrl
+            ? `<img src="${imgUrl}" alt="" loading="lazy" onerror="this.parentNode.innerHTML='<div class=drop-thumb-placeholder>🏠</div>'" />`
+            : '<div class="drop-thumb-placeholder">🏠</div>'}
+        </div>
+        <div class="drop-info">
+          <div class="drop-title">${l.title || 'Property listing'}</div>
+          <div class="drop-location">
+            <span>${flag}</span>
+            <span>${l.city || l.country || '—'}</span>
+            ${l.neighborhood ? `<span style="color:#334155">·</span><span>${l.neighborhood}</span>` : ''}
+            ${l.rooms ? `<span style="color:#334155">·</span><span style="color:#475569">${l.rooms} rooms</span>` : ''}
+            ${l.area_sqm ? `<span style="color:#334155">·</span><span style="color:#475569">${l.area_sqm} m²</span>` : ''}
+          </div>
+        </div>
+        <div class="drop-meta">
+          <div style="text-align:right;">
+            <div class="drop-pct" style="color:${dropColor};">−${abs.toFixed(1)}%</div>
+            <div class="drop-price">${fmtPrice(l.price, l.currency)}</div>
+            ${ago ? `<div class="drop-ago">${ago}</div>` : ''}
+          </div>
+        </div>
+        <div class="arrow-right">›</div>
+      `;
+      list.appendChild(row);
+    });
+  } catch (e) {
+    console.warn('drops failed', e);
+  }
+}
+
+// ── Ticker ─────────────────────────────────────────────────────────────────
+async function loadTicker() {
+  try {
+    const items = await fetch('/api/ticker').then(r => r.json());
+    if (!items || !items.length) return;
+    const makeItem = it => {
+      const abs = Math.abs(it.drop_pct);
+      const c = abs >= 20 ? '#ef4444' : '#f59e0b';
+      return `<a class="ticker-item" href="${it.url}" target="_blank" rel="noopener">
+        <span>${COUNTRY_FLAGS[it.country] || ''}</span>
+        <span>${it.label}</span>
+        <span style="color:${c};font-weight:700;">−${abs.toFixed(1)}%</span>
+        <span style="color:#334155">·</span>
+        <span style="color:#475569">${it.ago}</span>
+      </a><span style="color:#1e293b;padding:0 4px">⬥</span>`;
+    };
+    const html = items.map(makeItem).join('');
+    const track = document.getElementById('ticker-track');
+    track.innerHTML = html + html;
+    track.style.animationDuration = Math.max(20, items.length * 220 / 80) + 's';
+  } catch (e) { console.warn('ticker failed', e); }
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadStats();
+  loadMarkets();
+  loadDrops();
+  loadTicker();
+  setInterval(loadTicker, 3 * 60_000);
+  setInterval(() => { loadStats(); loadDrops(); }, 60_000);
+  buildFaq();
+});
+
+// ── Email alert subscription ──────────────────────────────────────────────────
+async function subscribeAlert(listingId) {
+  const input = document.getElementById('tr-email-input');
+  const msg   = document.getElementById('tr-alert-msg');
+  const email = input.value.trim();
+
+  if (!email || !email.includes('@')) {
+    msg.style.display = 'block';
+    msg.style.color   = '#f87171';
+    msg.textContent   = '⚠️ Please enter a valid email address';
+    return;
+  }
+
+  if (!listingId) {
+    msg.style.display = 'block';
+    msg.style.color   = '#f87171';
+    msg.textContent   = '⚠️ Listing not saved yet — please paste the URL again';
+    return;
+  }
+
+  const btn = document.querySelector('#tr-alert-bar button');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+  try {
+    const res  = await fetch('/api/alert', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ listing_id: listingId, email }),
+    });
+    const data = await res.json();
+
+    msg.style.display = 'block';
+    if (res.ok) {
+      msg.style.color = '#22c55e';
+      msg.textContent = data.status === 'already_subscribed'
+        ? `✅ ${email} już śledzi tę nieruchomość`
+        : `✅ Gotowe! Wyślemy email na ${email} przy każdym spadku ceny`;
+      input.value = '';
+      input.disabled = true;
+      if (btn) btn.style.opacity = '.5';
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = (TRANSLATIONS[_currentLang]||TRANSLATIONS.en).alert_btn; }
+      msg.style.color = '#f87171';
+      // Show full error detail for debugging
+      const detail = Array.isArray(data.detail)
+        ? data.detail.map(e => e.msg).join(', ')
+        : (data.detail || 'Could not subscribe');
+      msg.textContent = '❌ ' + detail;
+    }
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = (TRANSLATIONS[_currentLang]||TRANSLATIONS.en).alert_btn; }
+    msg.style.display = 'block';
+    msg.style.color   = '#f87171';
+    msg.textContent   = '❌ Network error: ' + e.message;
+  }
+}
+
+// ── FAQ ───────────────────────────────────────────────────────────────────────
+
+function buildFaq() {
+  // Delegates to setLang which rebuilds FAQ in the current language
+  const t = TRANSLATIONS[_currentLang] || TRANSLATIONS.en;
+  const container = document.getElementById('faq-list');
+  container.innerHTML = '';
+  (t.faq_items || TRANSLATIONS.en.faq_items).forEach((item, i) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'border-bottom:1px solid #1e293b;';
+    wrap.innerHTML = `
+      <button onclick="toggleFaq(${i})" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0;background:none;border:none;cursor:pointer;text-align:left;color:#e2e8f0;font-family:inherit;">
+        <span style="font-size:16px;font-weight:600;line-height:1.4;">${item.q}</span>
+        <span id="faq-icon-${i}" style="font-size:20px;color:#3b82f6;flex-shrink:0;transition:transform .2s;line-height:1;">+</span>
+      </button>
+      <div id="faq-body-${i}" style="overflow:hidden;max-height:0;transition:max-height .3s ease;">
+        <p style="font-size:15px;color:#94a3b8;line-height:1.75;padding-bottom:22px;margin:0;">${item.a}</p>
+      </div>
+    `;
+    container.appendChild(wrap);
+  });
+}
+
+function toggleFaq(i) {
+  const body = document.getElementById(`faq-body-${i}`);
+  const icon = document.getElementById(`faq-icon-${i}`);
+  const isOpen = body.style.maxHeight !== '0px' && body.style.maxHeight !== '';
+  if (isOpen) {
+    body.style.maxHeight = '0px';
+    icon.textContent = '+';
+    icon.style.transform = 'rotate(0deg)';
+  } else {
+    body.style.maxHeight = body.scrollHeight + 'px';
+    icon.textContent = '×';
+    icon.style.transform = 'rotate(0deg)';
+  }
+}
+
+// ── i18n ──────────────────────────────────────────────────────────────────────
+const TRANSLATIONS = {
+  en: {
+    nav_markets:        'Markets',
+    nav_drops:          'Price Drops',
+    nav_dashboard:      'Open Dashboard',
+    hero_badge:         'Live tracking · 5 markets',
+    hero_tagline:       'Where <em>smart investors</em> find the dip.<br/>Real estate price drops in emerging markets — tracked daily.',
+    hero_track_label:   '— Track your listing below —',
+    hero_placeholder:   'Paste a listing URL to start tracking…',
+    hero_btn:           'Track it →',
+    stat_tracked:       'Listings tracked',
+    stat_drops:         'Active price drops',
+    stat_avg:           'Avg drop',
+    stat_biggest:       'Biggest drop',
+    markets_eyebrow:    'Explore',
+    markets_title:      'Markets we track',
+    markets_sub:        'Emerging destinations where prices are moving — before the crowd arrives.',
+    markets_view_all:   'View all listings in dashboard',
+    drops_eyebrow:      'Live Feed',
+    drops_title:        'Recent price drops',
+    drops_sub:          'Latest validated drops across all markets — updated every hour.',
+    drops_open_dashboard: 'Open full dashboard',
+    faq_eyebrow:        'FAQ',
+    faq_title:          'Before you begin.',
+    footer_sub:         'Tracking real estate price drops in emerging markets. Data updated daily.',
+    alert_label:        '🔔 Get notified when price drops',
+    alert_placeholder:  'your@email.com',
+    alert_btn:          'Notify me',
+    track_btn_loading:  '⏳ Analysing…',
+    track_btn_default:  'Track it →',
+    faq_items: [
+      { q: 'What is HomeCharts?', a: 'HomeCharts is a real-time price drop tracker for emerging real estate markets. We monitor listing portals daily across Georgia, Albania, Malta, Greece, and Spain — surfacing only properties whose prices have genuinely dropped, so you never miss a deal.' },
+      { q: 'Does HomeCharts use AI to track listings?', a: 'Yes. HomeCharts uses advanced AI-powered trackers that continuously scan thousands of listings, detect price changes, and automatically filter out suspicious or manipulated drops. Our validation engine applies machine-learning heuristics to distinguish real seller discounts from data noise — so every drop you see is real.' },
+      { q: 'Which markets and portals do you cover?', a: 'We currently track live listings from myhome.ge (Georgia · Batumi), century21albania.com (Albania · Tirana, Durrës), maltapark.com (Malta), and tranio.com (Greece — Athens, Crete, Santorini, Corfu, Paros; Spain — Costa del Sol, Costa Blanca, Barcelona, Tenerife, Mallorca, Madrid). More markets are added regularly.' },
+      { q: 'How often is the data updated?', a: 'Listings are re-scraped every 24 hours. Price drop percentages are calculated relative to the first recorded price, so even a slow, multi-step reduction is caught over time. The "last updated" timestamp in the dashboard shows exactly when the latest scan ran.' },
+      { q: 'Why should I track price drops?', a: 'Price drops in emerging markets often signal motivated sellers — relocation, financial pressure, or developer oversupply. Catching a 15–30% reduction before the market corrects can mean significant equity on day one. HomeCharts does the daily monitoring so you don\'t have to.' },
+      { q: 'What counts as a validated price drop?', a: 'A drop is shown only when three rules pass: (1) the listing has been tracked for at least 7 days, (2) no single scan-to-scan drop exceeds 25% (prevents data errors), and (3) the total cumulative drop does not exceed 50%. This eliminates listing re-posts and price-manipulation artifacts.' },
+      { q: 'Is HomeCharts a real estate agency?', a: 'No. HomeCharts is a data platform — we aggregate and analyse publicly available listing information. We do not represent buyers or sellers, do not charge commissions, and have no affiliation with the portals we monitor.' },
+      { q: 'Which countries does the URL tracker support?', a: 'All of them. The HomeCharts URL tracker is designed to work with listing portals from every country — including Georgia, Albania, Malta, Greece, Spain, Poland, Czech Republic, Hungary, Portugal, UK, Germany, France, Italy, Ireland, South Africa, and more. If the portal is publicly accessible, our tracker can monitor it. Simply paste the listing URL and we handle the rest.' },
+    ],
+  },
+  pl: {
+    nav_markets:        'Rynki',
+    nav_drops:          'Spadki cen',
+    nav_dashboard:      'Otwórz Dashboard',
+    hero_badge:         'Śledzenie na żywo · 5 rynków',
+    hero_tagline:       'Gdzie <em>mądrzy inwestorzy</em> łapią dołek.<br/>Spadki cen nieruchomości na wschodzących rynkach — monitorowane codziennie.',
+    hero_track_label:   '— Śledź swoją nieruchomość poniżej —',
+    hero_placeholder:   'Wklej link do ogłoszenia…',
+    hero_btn:           'Śledź →',
+    stat_tracked:       'Śledzonych ofert',
+    stat_drops:         'Aktywne spadki cen',
+    stat_avg:           'Średni spadek',
+    stat_biggest:       'Największy spadek',
+    markets_eyebrow:    'Przeglądaj',
+    markets_title:      'Rynki które śledzimy',
+    markets_sub:        'Wschodzące lokalizacje, gdzie ceny się poruszają — zanim pojawi się tłum.',
+    markets_view_all:   'Zobacz wszystkie oferty w dashboardzie',
+    drops_eyebrow:      'Na żywo',
+    drops_title:        'Ostatnie spadki cen',
+    drops_sub:          'Najnowsze zweryfikowane spadki ze wszystkich rynków — aktualizowane co godzinę.',
+    drops_open_dashboard: 'Otwórz pełny dashboard',
+    faq_eyebrow:        'FAQ',
+    faq_title:          'Zanim zaczniesz.',
+    footer_sub:         'Śledzenie spadków cen nieruchomości na wschodzących rynkach. Dane aktualizowane codziennie.',
+    alert_label:        '🔔 Powiadom mnie o spadku ceny',
+    alert_placeholder:  'twoj@email.pl',
+    alert_btn:          'Powiadom mnie',
+    track_btn_loading:  '⏳ Analizuję…',
+    track_btn_default:  'Śledź →',
+    faq_items: [
+      { q: 'Czym jest HomeCharts?', a: 'HomeCharts to tracker spadków cen nieruchomości w czasie rzeczywistym dla wschodzących rynków. Monitorujemy portale ogłoszeniowe codziennie w Gruzji, Albanii, na Malcie, w Grecji i Hiszpanii — pokazując tylko nieruchomości, których ceny rzeczywiście spadły, abyś nie przegapił żadnej okazji.' },
+      { q: 'Czy HomeCharts używa sztucznej inteligencji?', a: 'Tak. HomeCharts wykorzystuje zaawansowane trackery oparte na AI, które nieustannie skanują tysiące ogłoszeń, wykrywają zmiany cen i automatycznie filtrują podejrzane lub manipulowane spadki. Nasz silnik walidacyjny stosuje heurystyki machine learning, by odróżnić prawdziwe rabaty od szumów danych.' },
+      { q: 'Jakie rynki i portale obsługujecie?', a: 'Aktualnie śledzimy oferty z myhome.ge (Gruzja · Batumi), century21albania.com (Albania · Tirana, Durrës), maltapark.com (Malta) oraz tranio.com (Grecja — Ateny, Kreta, Santorini, Korfu, Paros; Hiszpania — Costa del Sol, Costa Blanca, Barcelona, Teneryfa, Majorka, Madryt). Regularnie dodajemy nowe rynki.' },
+      { q: 'Jak często dane są aktualizowane?', a: 'Ogłoszenia są ponownie scrapowane co 24 godziny. Procentowe spadki cen liczone są względem pierwszej zarejestrowanej ceny, więc nawet powolna, wieloetapowa obniżka zostanie wykryta z czasem.' },
+      { q: 'Dlaczego warto śledzić spadki cen?', a: 'Spadki cen na wschodzących rynkach często sygnalizują zmotywowanych sprzedawców — przeprowadzka, presja finansowa lub nadpodaż deweloperska. Złapanie 15–30% redukcji przed korektą rynku może oznaczać znaczący zysk od pierwszego dnia. HomeCharts robi codzienny monitoring za Ciebie.' },
+      { q: 'Co oznacza zwalidowany spadek ceny?', a: 'Spadek jest wyświetlany tylko gdy spełnione są trzy reguły: (1) ogłoszenie jest śledzone od co najmniej 7 dni, (2) żaden pojedynczy spadek między skanami nie przekracza 25%, (3) łączny skumulowany spadek nie przekracza 50%. Eliminuje to powtórne publikacje ogłoszeń i artefakty manipulacji cenami.' },
+      { q: 'Czy HomeCharts jest agencją nieruchomości?', a: 'Nie. HomeCharts to platforma danych — agregujemy i analizujemy publicznie dostępne informacje o ogłoszeniach. Nie reprezentujemy kupujących ani sprzedających, nie pobieramy prowizji i nie jesteśmy powiązani z monitorowanymi portalami.' },
+      { q: 'Jakie kraje obsługuje tracker URL?', a: 'Wszystkie. Tracker URL HomeCharts jest zaprojektowany do pracy z portalami ogłoszeniowymi z każdego kraju — w tym Gruzji, Albanii, Malty, Grecji, Hiszpanii, Polski, Czech, Węgier, Portugalii, Wielkiej Brytanii, Niemiec, Francji, Włoch, Irlandii, RPA i wielu innych. Jeśli portal jest publicznie dostępny, nasz tracker może go monitorować.' },
+    ],
+  },
+  es: {
+    nav_markets:        'Mercados',
+    nav_drops:          'Bajadas de precio',
+    nav_dashboard:      'Abrir Dashboard',
+    hero_badge:         'Seguimiento en vivo · 5 mercados',
+    hero_tagline:       'Donde los <em>inversores inteligentes</em> encuentran el mínimo.<br/>Bajadas de precio en mercados emergentes — seguidas cada día.',
+    hero_track_label:   '— Rastrea tu inmueble abajo —',
+    hero_placeholder:   'Pega el enlace del anuncio para empezar…',
+    hero_btn:           'Rastrear →',
+    stat_tracked:       'Anuncios seguidos',
+    stat_drops:         'Bajadas activas',
+    stat_avg:           'Bajada media',
+    stat_biggest:       'Mayor bajada',
+    markets_eyebrow:    'Explorar',
+    markets_title:      'Mercados que seguimos',
+    markets_sub:        'Destinos emergentes donde los precios se mueven — antes de que llegue la multitud.',
+    markets_view_all:   'Ver todos los anuncios en el dashboard',
+    drops_eyebrow:      'En directo',
+    drops_title:        'Últimas bajadas de precio',
+    drops_sub:          'Las últimas bajadas validadas en todos los mercados — actualizado cada hora.',
+    drops_open_dashboard: 'Abrir dashboard completo',
+    faq_eyebrow:        'FAQ',
+    faq_title:          'Antes de empezar.',
+    footer_sub:         'Seguimiento de bajadas de precio en mercados inmobiliarios emergentes. Datos actualizados a diario.',
+    alert_label:        '🔔 Notifícame cuando baje el precio',
+    alert_placeholder:  'tu@email.com',
+    alert_btn:          'Notifícame',
+    track_btn_loading:  '⏳ Analizando…',
+    track_btn_default:  'Rastrear →',
+    faq_items: [
+      { q: '¿Qué es HomeCharts?', a: 'HomeCharts es un rastreador en tiempo real de bajadas de precio para mercados inmobiliarios emergentes. Monitorizamos portales de anuncios a diario en Georgia, Albania, Malta, Grecia y España — mostrando solo propiedades cuyos precios hayan bajado de verdad, para que no pierdas ninguna oportunidad.' },
+      { q: '¿Usa HomeCharts IA para rastrear anuncios?', a: 'Sí. HomeCharts utiliza rastreadores avanzados con IA que escanean continuamente miles de anuncios, detectan cambios de precio y filtran automáticamente bajadas sospechosas o manipuladas. Nuestro motor de validación aplica heurísticas de machine learning para distinguir descuentos reales del ruido de datos.' },
+      { q: '¿Qué mercados y portales cubren?', a: 'Actualmente rastreamos anuncios en vivo de myhome.ge (Georgia · Batumi), century21albania.com (Albania · Tirana, Durrës), maltapark.com (Malta) y tranio.com (Grecia — Atenas, Creta, Santorini, Corfú, Paros; España — Costa del Sol, Costa Blanca, Barcelona, Tenerife, Mallorca, Madrid). Se añaden más mercados regularmente.' },
+      { q: '¿Con qué frecuencia se actualizan los datos?', a: 'Los anuncios se vuelven a rastrear cada 24 horas. Los porcentajes de bajada se calculan respecto al primer precio registrado, por lo que incluso una reducción lenta y progresiva se detecta con el tiempo.' },
+      { q: '¿Por qué debería seguir bajadas de precio?', a: 'Las bajadas de precio en mercados emergentes suelen indicar vendedores motivados — traslado, presión financiera o sobreoferta de promotores. Detectar una reducción del 15–30% antes de que el mercado corrija puede suponer una gran rentabilidad desde el primer día. HomeCharts hace el seguimiento diario por ti.' },
+      { q: '¿Qué es una bajada de precio validada?', a: 'Una bajada se muestra solo cuando se cumplen tres reglas: (1) el anuncio lleva al menos 7 días siendo seguido, (2) ninguna bajada individual entre escaneos supera el 25%, (3) la bajada total acumulada no supera el 50%. Esto elimina republicaciones y artefactos de manipulación de precios.' },
+      { q: '¿Es HomeCharts una agencia inmobiliaria?', a: 'No. HomeCharts es una plataforma de datos — agregamos y analizamos información de anuncios disponible públicamente. No representamos a compradores ni vendedores, no cobramos comisiones y no tenemos afiliación con los portales que monitorizamos.' },
+      { q: '¿Qué países soporta el rastreador de URL?', a: 'Todos. El rastreador de URL de HomeCharts está diseñado para funcionar con portales de anuncios de cualquier país — incluidos Georgia, Albania, Malta, Grecia, España, Polonia, República Checa, Hungría, Portugal, Reino Unido, Alemania, Francia, Italia, Irlanda, Sudáfrica y muchos más.' },
+    ],
+  },
+};
+
+let _currentLang = localStorage.getItem('hc_lang') || 'en';
+
+function toggleLangMenu() {
+  const menu = document.getElementById('lang-menu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', e => {
+  if (!document.getElementById('lang-switcher').contains(e.target)) {
+    document.getElementById('lang-menu').style.display = 'none';
+  }
+});
+
+function setLang(lang) {
+  _currentLang = lang;
+  localStorage.setItem('hc_lang', lang);
+  document.getElementById('lang-menu').style.display = 'none';
+
+  const flags = { en: '🇬🇧', pl: '🇵🇱', es: '🇪🇸' };
+  const codes  = { en: 'EN',   pl: 'PL',   es: 'ES'  };
+  document.getElementById('lang-flag').textContent = flags[lang];
+  document.getElementById('lang-code').textContent = codes[lang];
+
+  const t = TRANSLATIONS[lang];
+
+  // Text nodes via data-i18n
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key] !== undefined) el.innerHTML = t[key];
+  });
+
+  // Placeholder attributes via data-i18n-placeholder
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (t[key] !== undefined) el.placeholder = t[key];
+  });
+
+  // Rebuild FAQ in new language
+  const container = document.getElementById('faq-list');
+  container.innerHTML = '';
+  (t.faq_items || TRANSLATIONS.en.faq_items).forEach((item, i) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'border-bottom:1px solid #1e293b;';
+    wrap.innerHTML = `
+      <button onclick="toggleFaq(${i})" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:22px 0;background:none;border:none;cursor:pointer;text-align:left;color:#e2e8f0;font-family:inherit;">
+        <span style="font-size:16px;font-weight:600;line-height:1.4;">${item.q}</span>
+        <span id="faq-icon-${i}" style="font-size:20px;color:#3b82f6;flex-shrink:0;transition:transform .2s;line-height:1;">+</span>
+      </button>
+      <div id="faq-body-${i}" style="overflow:hidden;max-height:0;transition:max-height .3s ease;">
+        <p style="font-size:15px;color:#94a3b8;line-height:1.75;padding-bottom:22px;margin:0;">${item.a}</p>
+      </div>
+    `;
+    container.appendChild(wrap);
+  });
+
+  // Update email alert label/button inside track result card (if visible)
+  const alertLabel = document.querySelector('#track-result [data-i18n="alert_label"]');
+  if (alertLabel) alertLabel.textContent = t.alert_label;
+  const alertInput = document.querySelector('#tr-email-input');
+  if (alertInput) alertInput.placeholder = t.alert_placeholder;
+  const alertBtn = document.querySelector('#tr-alert-bar button');
+  if (alertBtn && !alertBtn.disabled) alertBtn.textContent = t.alert_btn;
+}
+
+// Apply saved language on load (after DOM is ready)
+document.addEventListener('DOMContentLoaded', () => {
+  if (_currentLang !== 'en') setLang(_currentLang);
+});
+</script>
+
+</body>
+</html>

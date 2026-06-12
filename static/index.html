@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HomeCharts — Real Estate Price Drops</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📉</text></svg>" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: #080e1a; color: #e2e8f0; min-height: 100vh; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+
+    /* ── Header ─────────────────────────────────────────── */
+    .header { background: linear-gradient(180deg, #0d1626 0%, #0b1120 100%); border-bottom: 1px solid #1e293b; position: sticky; top: 0; z-index: 50; backdrop-filter: blur(8px); }
+
+    /* ── Stat cards ─────────────────────────────────────── */
+    .stat-card { background: #101827; border: 1px solid #1e293b; border-radius: 12px; padding: 16px 20px; transition: border-color .2s; }
+    .stat-card:hover { border-color: #334155; }
+    .stat-number { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-label { font-size: 12px; color: #64748b; margin-top: 4px; text-transform: uppercase; letter-spacing: .05em; }
+
+    /* ── Listing cards ──────────────────────────────────── */
+    .listing-card { background: #101827; border: 1px solid #1e293b; border-radius: 14px; overflow: hidden; transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease; cursor: pointer; display: flex; flex-direction: column; }
+    .listing-card:hover { transform: translateY(-3px); border-color: #3b82f6; box-shadow: 0 8px 32px rgba(59,130,246,.12); }
+
+    /* ── Property image / carousel ───────────────────────── */
+    .prop-img-wrap { position: relative; height: 190px; background: linear-gradient(135deg,#111827 0%,#1e293b 100%); overflow: hidden; flex-shrink: 0; }
+    .prop-img-wrap img { width:100%; height:100%; object-fit:cover; transition: transform .3s ease; display:block; }
+    .listing-card:hover .prop-img-wrap img { transform: scale(1.04); }
+    .prop-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:52px; opacity:.18; }
+
+    /* ── Card carousel nav dots ─────────────────────────── */
+    .card-dots { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); display:flex; gap:4px; }
+    .card-dot { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.4); transition: background .2s, transform .2s; }
+    .card-dot.active { background:#fff; transform:scale(1.2); }
+
+    /* ── Card carousel arrows ───────────────────────────── */
+    .card-arrow { position:absolute; top:50%; transform:translateY(-50%); width:28px; height:28px; background:rgba(8,14,26,.65); border:none; color:#e2e8f0; border-radius:6px; font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center; opacity:0; transition: opacity .2s; z-index:2; }
+    .prop-img-wrap:hover .card-arrow { opacity:1; }
+    .card-arrow.prev { left:8px; }
+    .card-arrow.next { right:8px; }
+
+    /* ── Badges ─────────────────────────────────────────── */
+    .drop-badge { position:absolute; top:10px; left:10px; background:rgba(239,68,68,.92); color:#fff; font-size:13px; font-weight:700; padding:4px 10px; border-radius:20px; letter-spacing:.02em; backdrop-filter:blur(4px); z-index:2; }
+    .drop-badge.small { background:rgba(249,115,22,.90); }
+    .photo-count-badge { position:absolute; bottom:8px; right:8px; background:rgba(8,14,26,.72); border:1px solid rgba(255,255,255,.12); color:#cbd5e1; font-size:11px; font-weight:500; padding:3px 8px; border-radius:6px; backdrop-filter:blur(4px); display:flex; align-items:center; gap:4px; z-index:2; }
+    .portal-badge { position:absolute; top:10px; right:10px; background:rgba(15,23,42,.85); border:1px solid #334155; color:#94a3b8; font-size:10px; font-weight:600; padding:3px 8px; border-radius:6px; letter-spacing:.04em; text-transform:uppercase; backdrop-filter:blur(4px); z-index:2; }
+
+    /* ── Card body ──────────────────────────────────────── */
+    .card-body { padding:16px; flex:1; display:flex; flex-direction:column; gap:10px; }
+    .price-row { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+    .price-current { font-size:22px; font-weight:700; color:#f1f5f9; }
+    .price-original { font-size:14px; color:#64748b; text-decoration:line-through; }
+    .card-title { font-size:14px; font-weight:500; color:#cbd5e1; line-height:1.4; }
+    .card-title a { color:inherit; text-decoration:none; transition:color .15s; }
+    .card-title a:hover { color:#60a5fa; text-decoration:underline; }
+    .card-location { font-size:12px; color:#64748b; display:flex; align-items:center; gap:4px; }
+    .card-specs { display:flex; gap:8px; flex-wrap:wrap; }
+    .spec-chip { font-size:11px; color:#94a3b8; background:#1e293b; padding:3px 8px; border-radius:6px; white-space:nowrap; }
+    .card-actions { margin-top:auto; display:flex; gap:8px; }
+    .btn-history { flex:1; background:#1e293b; border:1px solid #334155; color:#94a3b8; font-size:12px; font-weight:500; padding:8px 10px; border-radius:8px; cursor:pointer; transition:background .15s,color .15s,border-color .15s; display:flex; align-items:center; justify-content:center; gap:5px; }
+    .btn-history:hover { background:#3b82f6; border-color:#3b82f6; color:#fff; }
+    .btn-ext-card { background:#1e293b; border:1px solid #334155; color:#64748b; font-size:12px; font-weight:500; padding:8px 10px; border-radius:8px; cursor:pointer; transition:background .15s,color .15s; display:flex; align-items:center; gap:4px; text-decoration:none; white-space:nowrap; }
+    .btn-ext-card:hover { background:#334155; color:#e2e8f0; }
+    .btn-whatsapp { display:flex; align-items:center; gap:4px; background:#1e293b; border:1px solid #25d366; color:#25d366; font-size:12px; font-weight:500; padding:8px 10px; border-radius:8px; text-decoration:none; white-space:nowrap; transition:background .15s,color .15s; }
+    .btn-whatsapp:hover { background:#25d366; color:#fff; }
+    .btn-whatsapp-modal { display:inline-flex; align-items:center; gap:6px; background:#1e293b; border:1px solid #25d366; color:#25d366; font-size:13px; font-weight:500; padding:8px 16px; border-radius:8px; text-decoration:none; transition:background .15s,color .15s; }
+    .btn-whatsapp-modal:hover { background:#25d366; color:#fff; }
+
+    /* ── Filters bar ────────────────────────────────────── */
+    .filter-input { background:#1e293b; border:1px solid #334155; color:#e2e8f0; border-radius:8px; padding:8px 12px; font-size:13px; outline:none; transition:border-color .15s; }
+    .filter-input:focus { border-color:#3b82f6; }
+    .filter-input::placeholder { color:#475569; }
+    select.filter-input option { background:#1e293b; }
+
+    /* ── Modal overlay ──────────────────────────────────── */
+    .modal-overlay { position:fixed; inset:0; z-index:100; background:rgba(5,10,20,.87); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:16px; opacity:0; pointer-events:none; transition:opacity .2s; }
+    .modal-overlay.open { opacity:1; pointer-events:auto; }
+    .modal-box { background:#101827; border:1px solid #1e293b; border-radius:18px; max-width:820px; width:100%; max-height:92vh; overflow-y:auto; transform:translateY(16px); transition:transform .2s; }
+    .modal-overlay.open .modal-box { transform:translateY(0); }
+
+    /* ── Modal image gallery ────────────────────────────── */
+    .gallery-wrap { position:relative; background:#0b1120; border-radius:14px 14px 0 0; overflow:hidden; }
+    .gallery-main { position:relative; height:320px; overflow:hidden; }
+    .gallery-main img { width:100%; height:100%; object-fit:cover; display:block; transition:opacity .25s; }
+    .gallery-main .placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:72px; opacity:.12; background:linear-gradient(135deg,#111827,#1e293b); }
+    .gallery-nav-btn { position:absolute; top:50%; transform:translateY(-50%); width:40px; height:40px; background:rgba(8,14,26,.75); border:1px solid rgba(255,255,255,.1); color:#e2e8f0; border-radius:10px; font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:background .15s,border-color .15s; z-index:3; }
+    .gallery-nav-btn:hover { background:rgba(59,130,246,.85); border-color:#3b82f6; }
+    .gallery-nav-btn.prev { left:12px; }
+    .gallery-nav-btn.next { right:12px; }
+    .gallery-counter { position:absolute; bottom:12px; right:12px; background:rgba(8,14,26,.72); border:1px solid rgba(255,255,255,.1); color:#cbd5e1; font-size:12px; font-weight:500; padding:4px 10px; border-radius:6px; backdrop-filter:blur(4px); z-index:3; }
+    /* Thumbnail strip */
+    .gallery-thumbs { display:flex; gap:6px; padding:8px 12px; background:#0b1120; border-bottom:1px solid #1e293b; overflow-x:auto; scrollbar-width:thin; }
+    .gallery-thumb { width:72px; height:52px; flex-shrink:0; border-radius:6px; overflow:hidden; cursor:pointer; border:2px solid transparent; transition:border-color .15s,transform .15s; }
+    .gallery-thumb:hover { transform:scale(1.05); }
+    .gallery-thumb.active { border-color:#3b82f6; }
+    .gallery-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+
+    /* ── Modal content ──────────────────────────────────── */
+    .modal-header { display:flex; align-items:center; justify-content:space-between; padding:18px 24px 14px; border-bottom:1px solid #1e293b; }
+    .modal-header h2 { font-size:17px; font-weight:600; color:#f1f5f9; line-height:1.3; }
+    .btn-close { width:32px; height:32px; background:#1e293b; border:none; color:#64748b; border-radius:8px; font-size:18px; cursor:pointer; transition:background .15s,color .15s; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .btn-close:hover { background:#334155; color:#e2e8f0; }
+    .modal-body { padding:20px 24px; }
+    .modal-stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+    .modal-stat { background:#1e293b; border-radius:10px; padding:12px 16px; text-align:center; }
+    .modal-stat-value { font-size:20px; font-weight:700; }
+    .modal-stat-label { font-size:11px; color:#64748b; margin-top:2px; text-transform:uppercase; letter-spacing:.05em; }
+    .chart-container { position:relative; height:240px; }
+    .history-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .history-table th { color:#64748b; font-weight:500; text-align:left; padding:6px 12px; border-bottom:1px solid #1e293b; }
+    .history-table td { padding:8px 12px; border-bottom:1px solid #1a2435; color:#cbd5e1; }
+    .history-table tr:last-child td { border-bottom:none; }
+    .change-down { color:#f87171; font-weight:600; }
+    .change-flat { color:#64748b; }
+    .modal-footer { padding:16px 24px; border-top:1px solid #1e293b; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+    .btn-external { display:inline-flex; align-items:center; gap:6px; background:#1e293b; border:1px solid #334155; color:#94a3b8; font-size:13px; font-weight:500; padding:8px 16px; border-radius:8px; text-decoration:none; transition:background .15s,color .15s; }
+    .btn-external:hover { background:#3b82f6; border-color:#3b82f6; color:#fff; }
+
+    /* ── Market pills ───────────────────────────────────── */
+    .market-pill { display:inline-flex; align-items:center; gap:6px; padding:6px 16px; border-radius:20px; font-size:13px; font-weight:500; border:1px solid; transition:all .15s; cursor:pointer; white-space:nowrap; }
+    .market-pill.active { background:rgba(59,130,246,.15); border-color:#3b82f6; color:#60a5fa; }
+    .market-pill.coming-soon { background:transparent; border-color:#1e293b; color:#475569; cursor:default; }
+    .pill-arrow { font-size:10px; margin-left:2px; opacity:.7; transition:transform .15s; }
+    .pill-arrow.open { transform:rotate(180deg); }
+    /* ── Pill submenu ───────────────────────────────────── */
+    .pill-group { position:relative; display:inline-flex; flex-direction:column; }
+    .pill-submenu { position:absolute; top:calc(100% + 6px); left:0; background:#0d1626; border:1px solid #1e293b; border-radius:12px; padding:5px; z-index:200; min-width:130px; display:none; flex-direction:column; gap:2px; box-shadow:0 8px 24px rgba(0,0,0,.5); }
+    .pill-submenu.open { display:flex; }
+    .pill-sub-item { padding:7px 14px; font-size:12px; color:#94a3b8; border-radius:8px; cursor:pointer; white-space:nowrap; transition:all .12s; }
+    .pill-sub-item:hover { background:#1e293b; color:#e2e8f0; }
+    .pill-sub-item.active { background:rgba(59,130,246,.15); color:#60a5fa; }
+
+    /* ── Misc ───────────────────────────────────────────── */
+    .empty-state { text-align:center; padding:80px 24px; color:#475569; }
+    .empty-state .icon { font-size:64px; margin-bottom:16px; }
+    .empty-state h3 { font-size:18px; font-weight:600; color:#64748b; margin-bottom:8px; }
+    .empty-state p { font-size:14px; line-height:1.6; }
+    .skeleton { background:linear-gradient(90deg,#1e293b 25%,#334155 50%,#1e293b 75%); background-size:200% 100%; animation:shimmer 1.4s infinite; border-radius:8px; }
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .btn-scrape { display:inline-flex; align-items:center; gap:6px; background:rgba(59,130,246,.12); border:1px solid rgba(59,130,246,.3); color:#60a5fa; font-size:13px; font-weight:500; padding:7px 14px; border-radius:8px; cursor:pointer; transition:all .15s; }
+    .btn-scrape:hover { background:rgba(59,130,246,.22); border-color:#3b82f6; }
+    .btn-scrape.running { opacity:.6; pointer-events:none; }
+    .btn-scrape .spin { animation:spin 1s linear infinite; display:inline-block; }
+    @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+    input[type=range] { accent-color:#3b82f6; cursor:pointer; }
+    .live-dot { width:8px; height:8px; border-radius:50%; background:#22c55e; box-shadow:0 0 0 0 rgba(34,197,94,.4); animation:pulse 2s infinite; display:inline-block; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(34,197,94,.4)} 70%{box-shadow:0 0 0 7px rgba(34,197,94,0)} 100%{box-shadow:0 0 0 0 rgba(34,197,94,0)} }
+    .listings-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:20px; }
+    .section-label { font-size:12px; color:#64748b; text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:10px; }
+  /* ── Ticker ─────────────────────────────────────────────────────────────── */
+  .ticker-wrap {
+    width: 100%; overflow: hidden; background: #0a0f1a;
+    border-bottom: 1px solid #1e293b;
+    padding: 7px 0; position: relative; z-index: 200;
+  }
+  .ticker-track {
+    display: flex; gap: 0; white-space: nowrap;
+    animation: ticker-scroll 60s linear infinite;
+    will-change: transform;
+  }
+  .ticker-track:hover { animation-play-state: paused; }
+  @keyframes ticker-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .ticker-item {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 500; color: #94a3b8;
+    padding: 0 28px; cursor: pointer; transition: color .15s;
+    text-decoration: none;
+  }
+  .ticker-item:hover { color: #f1f5f9; }
+  .ticker-drop { color: #f87171; font-weight: 700; }
+  .ticker-sep { color: #334155; }
+  </style>
+</head>
+<body>
+
+<!-- ── TICKER ─────────────────────────────────────────────────────────────── -->
+<div class="ticker-wrap" id="ticker-wrap">
+  <div class="ticker-track" id="ticker-track">
+    <span style="color:#475569;font-size:12px;padding:0 16px;">Loading…</span>
+  </div>
+</div>
+
+<!-- ── HEADER ──────────────────────────────────────────────────────────────── -->
+<header class="header">
+  <div style="max-width:1400px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+    <a href="/" style="display:flex;align-items:center;gap:0;text-decoration:none;">
+      <img src="/static/logo.png" alt="HomeCharts logo" style="width:112px;height:112px;object-fit:contain;mix-blend-mode:screen;flex-shrink:0;transform:translateX(16px);">
+      <div style="display:flex;flex-direction:column;justify-content:center;">
+        <div style="font-size:22px;font-weight:900;color:#f1f5f9;letter-spacing:-.03em;font-family:'Inter',system-ui,sans-serif;line-height:1.1;">Home<span style="color:#ef4444;">Charts</span></div>
+        <div style="font-size:11px;color:#475569;margin-top:2px;font-family:'Inter',system-ui,sans-serif;">Real estate price drop tracker</div>
+      </div>
+    </a>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <!-- Georgia — expandable -->
+      <div class="pill-group" id="group-Georgia">
+        <div class="market-pill" id="pill-Georgia" onclick="togglePillGroup('Georgia')">
+          <span style="font-size:15px;">🇬🇪</span> Georgia <span class="pill-arrow" id="arrow-Georgia">▾</span>
+        </div>
+        <div class="pill-submenu" id="submenu-Georgia">
+          <div class="pill-sub-item" id="subcity-Georgia-Batumi" onclick="setPillCity('Georgia','Batumi')">🏖 Batumi</div>
+        </div>
+      </div>
+      <!-- Albania — expandable -->
+      <div class="pill-group" id="group-Albania">
+        <div class="market-pill" id="pill-Albania" onclick="togglePillGroup('Albania')">
+          <span style="font-size:15px;">🇦🇱</span> Albania <span class="pill-arrow" id="arrow-Albania">▾</span>
+        </div>
+        <div class="pill-submenu" id="submenu-Albania">
+          <div class="pill-sub-item" id="subcity-Albania-Tirana" onclick="setPillCity('Albania','Tirana')">🏙 Tirana</div>
+          <div class="pill-sub-item" id="subcity-Albania-Durres" onclick="setPillCity('Albania','Durres')">🏖 Durrës</div>
+        </div>
+      </div>
+      <!-- Malta — expandable -->
+      <div class="pill-group" id="group-Malta">
+        <div class="market-pill" id="pill-Malta" onclick="togglePillGroup('Malta')">
+          <span style="font-size:15px;">🇲🇹</span> Malta <span class="pill-arrow" id="arrow-Malta">▾</span>
+        </div>
+        <div class="pill-submenu" id="submenu-Malta">
+          <div class="pill-sub-item" id="subcity-Malta-Gozo" onclick="setPillCity('Malta','Gozo')">🏝 Gozo</div>
+          <div class="pill-sub-item" id="subcity-Malta-Valletta" onclick="setPillCity('Malta','Valletta')">🏛 Valletta</div>
+          <div class="pill-sub-item" id="subcity-Malta-Sliema" onclick="setPillCity('Malta','Sliema')">🌊 Sliema</div>
+          <div class="pill-sub-item" id="subcity-Malta-StJulians" onclick="setPillCity('Malta','StJulians')">🎰 St Julian's</div>
+        </div>
+      </div>
+      <!-- Spain — expandable -->
+      <div class="pill-group" id="group-Spain">
+        <div class="market-pill" id="pill-Spain" onclick="togglePillGroup('Spain')">
+          <span style="font-size:15px;">🇪🇸</span> Spain <span class="pill-arrow" id="arrow-Spain">▾</span>
+        </div>
+        <div class="pill-submenu" id="submenu-Spain">
+          <div class="pill-sub-item" id="subcity-Spain-Costa del Sol" onclick="setPillCity('Spain','Costa del Sol')">☀️ Costa del Sol</div>
+          <div class="pill-sub-item" id="subcity-Spain-Costa Blanca" onclick="setPillCity('Spain','Costa Blanca')">🏖 Costa Blanca</div>
+          <div class="pill-sub-item" id="subcity-Spain-Barcelona" onclick="setPillCity('Spain','Barcelona')">🏙 Barcelona</div>
+          <div class="pill-sub-item" id="subcity-Spain-Tenerife" onclick="setPillCity('Spain','Tenerife')">🌋 Tenerife</div>
+          <div class="pill-sub-item" id="subcity-Spain-Mallorca" onclick="setPillCity('Spain','Mallorca')">⛵ Mallorca</div>
+          <div class="pill-sub-item" id="subcity-Spain-Madrid" onclick="setPillCity('Spain','Madrid')">🏛 Madrid</div>
+        </div>
+      </div>
+      <!-- Greece — expandable -->
+      <div class="pill-group" id="group-Greece">
+        <div class="market-pill" id="pill-Greece" onclick="togglePillGroup('Greece')">
+          <span style="font-size:15px;">🇬🇷</span> Greece <span class="pill-arrow" id="arrow-Greece">▾</span>
+        </div>
+        <div class="pill-submenu" id="submenu-Greece">
+          <div class="pill-sub-item" id="subcity-Greece-Athens" onclick="setPillCity('Greece','Athens')">🏛 Athens</div>
+          <div class="pill-sub-item" id="subcity-Greece-Crete" onclick="setPillCity('Greece','Crete')">🏝 Crete</div>
+          <div class="pill-sub-item" id="subcity-Greece-Santorini" onclick="setPillCity('Greece','Santorini')">🌋 Santorini</div>
+          <div class="pill-sub-item" id="subcity-Greece-Mykonos" onclick="setPillCity('Greece','Mykonos')">⛵ Mykonos</div>
+          <div class="pill-sub-item" id="subcity-Greece-Paros" onclick="setPillCity('Greece','Paros')">🏝 Paros</div>
+          <div class="pill-sub-item" id="subcity-Greece-Corfu" onclick="setPillCity('Greece','Corfu')">🫒 Corfu</div>
+          <div class="pill-sub-item" id="subcity-Greece-Halkidiki" onclick="setPillCity('Greece','Halkidiki')">🌲 Halkidiki</div>
+          <div class="pill-sub-item" id="subcity-Greece-Peloponnese" onclick="setPillCity('Greece','Peloponnese')">🏛 Peloponnese</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:12px;color:#475569;display:flex;align-items:center;gap:6px;">
+        <span class="live-dot"></span>
+        <span id="last-updated-text">Loading…</span>
+      </span>
+
+      <!-- Language switcher -->
+      <div style="position:relative;display:inline-block;" id="dash-lang-switcher">
+        <button onclick="toggleDashLangMenu()" style="display:flex;align-items:center;gap:5px;background:#0d1626;border:1px solid #334155;color:#94a3b8;font-size:12px;font-weight:500;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:inherit;transition:border-color .15s;">
+          <span id="dash-lang-flag">🇬🇧</span>
+          <span id="dash-lang-code">EN</span>
+          <svg width="9" height="9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" style="opacity:.5;"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+        </button>
+        <div id="dash-lang-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);background:#0d1626;border:1px solid #1e293b;border-radius:10px;overflow:hidden;min-width:120px;z-index:999;box-shadow:0 8px 24px rgba(0,0,0,.4);">
+          <button onclick="dashSetLang('en')" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 14px;background:none;border:none;color:#e2e8f0;font-size:12px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">🇬🇧 English</button>
+          <button onclick="dashSetLang('pl')" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 14px;background:none;border:none;color:#e2e8f0;font-size:12px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">🇵🇱 Polski</button>
+          <button onclick="dashSetLang('es')" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 14px;background:none;border:none;color:#e2e8f0;font-size:12px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">🇪🇸 Español</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</header>
+
+<!-- ── STATS ──────────────────────────────────────────────────────────────── -->
+<section style="max-width:1400px;margin:24px auto 0;padding:0 24px;">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;">
+    <div class="stat-card"><div class="stat-number" id="stat-total">—</div><div class="stat-label" data-i18n="stat_tracked">Listings Tracked</div></div>
+    <div class="stat-card"><div class="stat-number" style="color:#f87171;" id="stat-drops">—</div><div class="stat-label" data-i18n="stat_drops">Active Price Drops</div></div>
+    <div class="stat-card"><div class="stat-number" style="color:#ef4444;" id="stat-biggest">—</div><div class="stat-label" data-i18n="stat_biggest">Biggest Drop</div></div>
+    <div class="stat-card"><div class="stat-number" style="color:#fb923c;" id="stat-avg">—</div><div class="stat-label" data-i18n="stat_avg">Average Drop</div></div>
+  </div>
+</section>
+
+<!-- ── FILTERS ────────────────────────────────────────────────────────────── -->
+<section style="max-width:1400px;margin:20px auto 0;padding:0 24px;">
+  <div style="background:#0d1626;border:1px solid #1e293b;border-radius:12px;padding:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+    <input class="filter-input" type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="🔍  Search by title or area…" style="flex:1;min-width:220px;" oninput="applyFilters()" />
+    <select class="filter-input" id="sort-select" onchange="applyFilters()">
+      <option value="drop" data-i18n="sort_drop">Sort: Biggest Drop</option>
+      <option value="latest" data-i18n="sort_latest">Sort: Most Recent</option>
+      <option value="price_asc" data-i18n="sort_price_asc">Sort: Price ↑</option>
+      <option value="price_desc" data-i18n="sort_price_desc">Sort: Price ↓</option>
+      <option value="area" data-i18n="sort_area">Sort: Largest Area</option>
+    </select>
+    <select class="filter-input" id="country-select" onchange="applyFilters()">
+      <option value="" data-i18n="all_markets">🌍 All Markets</option>
+      <optgroup label="── Live ──────────────">
+        <option value="Georgia">🇬🇪 Georgia · Batumi</option>
+        <option value="Albania">🇦🇱 Albania</option>
+        <option value="Malta">🇲🇹 Malta</option>
+        <option value="Greece">🇬🇷 Greece</option>
+        <option value="Spain">🇪🇸 Spain</option>
+      </optgroup>
+    </select>
+    <select class="filter-input" id="portal-select" onchange="applyFilters()">
+      <option value="" data-i18n="all_portals">All Portals</option>
+      <optgroup label="Georgia">
+        <option value="myhome.ge">myhome.ge</option>
+        <option value="ss.ge">ss.ge</option>
+      </optgroup>
+      <optgroup label="Albania">
+        <option value="century21albania.com">century21albania.com</option>
+      </optgroup>
+      <optgroup label="Malta">
+        <option value="maltapark.com">maltapark.com</option>
+      </optgroup>
+      <optgroup label="Greece">
+        <option value="tranio.com">tranio.com</option>
+      </optgroup>
+      <optgroup label="Spain">
+        <option value="tranio.com">tranio.com</option>
+      </optgroup>
+    </select>
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#64748b;white-space:nowrap;">
+        <span style="min-width:58px;" data-i18n="filter_min_drop">Min drop</span>
+        <span id="min-drop-display" style="color:#f87171;font-weight:600;min-width:28px;">1%</span>
+        <input type="range" id="min-drop-slider" min="0" max="49" step="1" value="1" style="width:100px;"
+          oninput="document.getElementById('min-drop-display').textContent=(this.value=='0'?'all':this.value+'%');applyFilters()" />
+      </label>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#64748b;white-space:nowrap;">
+        <span style="min-width:58px;" data-i18n="filter_max_drop">Max drop</span>
+        <span id="max-drop-display" style="color:#fb923c;font-weight:600;min-width:28px;">50%</span>
+        <input type="range" id="max-drop-slider" min="1" max="50" step="1" value="50" style="width:100px;"
+          oninput="document.getElementById('max-drop-display').textContent=this.value+'%';applyFilters()" />
+      </label>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:#64748b;white-space:nowrap;">
+      <span data-i18n="filter_max_price">Max price</span>
+      <input type="number" id="max-price-input" data-i18n-placeholder="filter_no_limit" placeholder="no limit"
+        min="0" step="10000"
+        style="width:110px;background:#0a1628;border:1px solid #1e293b;border-radius:6px;padding:6px 8px;font-size:13px;color:#94a3b8;outline:none;"
+        oninput="applyFilters()" />
+      <span id="max-price-currency-label" style="font-size:12px;color:#475569;font-weight:600;">USD</span>
+    </label>
+    <div id="result-count" style="font-size:13px;color:#475569;white-space:nowrap;"></div>
+    <div style="display:flex;align-items:center;gap:0;border:1px solid #334155;border-radius:8px;overflow:hidden;flex-shrink:0;">
+      <button id="btn-usd" onclick="setCurrency('USD')" style="padding:7px 14px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:#3b82f6;color:#fff;transition:background .15s;">USD</button>
+      <button id="btn-eur" onclick="setCurrency('EUR')" style="padding:7px 14px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:#1e293b;color:#64748b;transition:background .15s;">EUR</button>
+    </div>
+  </div>
+</section>
+
+<!-- ── LISTINGS GRID ──────────────────────────────────────────────────────── -->
+<main style="max-width:1400px;margin:24px auto 48px;padding:0 24px;">
+  <div id="listings-grid" class="listings-grid"></div>
+</main>
+
+<!-- ── MODAL ──────────────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal-box" id="modal-box">
+
+    <!-- Gallery (injected dynamically) -->
+    <div id="modal-gallery"></div>
+
+    <!-- Header -->
+    <div class="modal-header">
+      <h2 id="modal-title">Property Details</h2>
+      <button class="btn-close" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- Body -->
+    <div class="modal-body">
+
+      <!-- Stats row -->
+      <div class="modal-stats-row">
+        <div class="modal-stat">
+          <div class="modal-stat-value" style="color:#f1f5f9;" id="modal-price-current">—</div>
+          <div class="modal-stat-label" data-i18n="modal_current_price">Current Price</div>
+        </div>
+        <div class="modal-stat">
+          <div class="modal-stat-value" style="color:#64748b;" id="modal-price-peak">—</div>
+          <div class="modal-stat-label" data-i18n="modal_peak_price">Peak Price</div>
+        </div>
+        <div class="modal-stat">
+          <div class="modal-stat-value" style="color:#ef4444;" id="modal-drop">—</div>
+          <div class="modal-stat-label" data-i18n="modal_total_drop">Total Drop</div>
+        </div>
+      </div>
+
+      <!-- Property detail chips -->
+      <div id="modal-details" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;"></div>
+
+      <!-- Price chart -->
+      <div class="section-label" data-i18n="modal_price_history">Price History</div>
+      <div class="chart-container">
+        <canvas id="price-chart"></canvas>
+      </div>
+
+      <!-- History table -->
+      <div style="margin-top:20px;">
+        <div class="section-label" data-i18n="modal_all_changes">All Price Changes</div>
+        <table class="history-table">
+          <thead><tr><th data-i18n="modal_th_date">Date</th><th data-i18n="modal_th_price">Price</th><th data-i18n="modal_th_change">Change</th></tr></thead>
+          <tbody id="modal-history-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="modal-footer">
+      <div style="font-size:12px;color:#475569;" id="modal-meta"></div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <a id="modal-whatsapp" href="#" target="_blank" rel="noopener" class="btn-whatsapp-modal" style="display:none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.116 1.524 5.849L.057 23.994l6.304-1.654A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.371l-.36-.213-3.721.976.994-3.622-.234-.373A9.818 9.818 0 012.182 12C2.182 6.58 6.58 2.182 12 2.182c5.42 0 9.818 4.398 9.818 9.818 0 5.42-4.398 9.818-9.818 9.818z"/></svg>
+          WhatsApp
+        </a>
+        <a id="modal-ext-link" href="#" target="_blank" rel="noopener" class="btn-external">
+          View on Portal ↗
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── JS ─────────────────────────────────────────────────────────────────── -->
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let allListings      = [];
+let filteredListings = [];
+let currentListing   = null;
+let priceChart       = null;
+let galleryImages    = [];
+let galleryIndex     = 0;
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  showSkeletons(9);
+  loadAll();
+  setInterval(loadAll, 60_000);
+  loadTicker();
+  setInterval(loadTicker, 3 * 60_000); // refresh ticker every 3 min
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+    if (e.key === 'ArrowLeft')  shiftGallery(-1);
+    if (e.key === 'ArrowRight') shiftGallery(1);
+  });
+  // Restore saved currency preference
+  setCurrency(activeCurrency);
+
+  // Pre-apply country filter from URL param (?country=Albania etc.)
+  const urlCountry = new URLSearchParams(window.location.search).get('country');
+  if (urlCountry) {
+    const sel = id('country-select');
+    if (sel) sel.value = urlCountry;
+
+    // highlight pill + open submenu
+    const pill    = id(`pill-${urlCountry}`);
+    const submenu = id(`submenu-${urlCountry}`);
+    const arrow   = id(`arrow-${urlCountry}`);
+    if (pill)    pill.classList.add('active');
+    if (submenu) submenu.classList.add('open');
+    if (arrow)   arrow.classList.add('open');
+
+    // apply filter once listings have loaded
+    const _applyWhenReady = setInterval(() => {
+      if (document.querySelectorAll('.listing-card').length > 0 ||
+          document.getElementById('empty-state')) {
+        clearInterval(_applyWhenReady);
+        applyFilters();
+        updateMarketPills();
+      }
+    }, 100);
+    // safety fallback
+    setTimeout(() => { clearInterval(_applyWhenReady); applyFilters(); updateMarketPills(); }, 4000);
+  }
+});
+
+async function loadAll() {
+  await Promise.all([loadStats(), loadListings()]);
+}
+
+// ─── Ticker ───────────────────────────────────────────────────────────────────
+const COUNTRY_FLAG_MAP = { Georgia:'🇬🇪', Albania:'🇦🇱', Malta:'🇲🇹', Greece:'🇬🇷', Spain:'🇪🇸' };
+
+async function loadTicker() {
+  try {
+    const items = await fetch('/api/ticker').then(r => r.json());
+    if (!items || !items.length) return;
+
+    const EUR_RATE = 0.92;
+    const flag = c => COUNTRY_FLAG_MAP[c] || '';
+
+    const makeItem = it => {
+      const f = flag(it.country);
+      const abs = Math.abs(it.drop_pct);
+      const c = abs >= 20 ? '#ef4444' : '#f59e0b';
+      return `<a class="ticker-item" href="${it.url}" target="_blank" rel="noopener">
+        ${f ? `<span>${f}</span>` : ''}
+        <span>${it.label}</span>
+        <span style="color:${c};font-weight:700;">−${abs.toFixed(1)}%</span>
+        <span style="color:#475569">·</span>
+        <span style="color:#64748b">${it.ago}</span>
+      </a><span class="ticker-sep">⬥</span>`;
+    };
+
+    const html = items.map(makeItem).join('');
+    // Duplicate for seamless loop
+    const track = document.getElementById('ticker-track');
+    track.innerHTML = html + html;
+
+    // Adjust animation speed: ~100px per second, so duration ≈ total_width / 100
+    // We approximate: each item ~220px wide
+    const totalW = items.length * 220;
+    track.style.animationDuration = Math.max(20, totalW / 80) + 's';
+  } catch (e) {
+    console.warn('Ticker load failed', e);
+  }
+}
+
+// ─── Stats ────────────────────────────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const d = await fetch('/api/stats').then(r => r.json());
+    set('stat-total',   d.total_tracked.toLocaleString());
+    set('stat-drops',   d.active_drops.toLocaleString());
+    set('stat-biggest', d.biggest_drop_pct ? `↓ ${Math.abs(d.biggest_drop_pct).toFixed(1)}%` : '—');
+    set('stat-avg',     d.avg_drop_pct     ? `↓ ${Math.abs(d.avg_drop_pct).toFixed(1)}%`     : '—');
+    set('last-updated-text', d.last_updated ? `Updated ${timeAgo(new Date(d.last_updated))}` : 'No scrape yet');
+  } catch(e) { console.error('Stats:', e); }
+}
+
+// ─── Listings ─────────────────────────────────────────────────────────────────
+async function loadListings() {
+  try {
+    allListings = await fetch('/api/listings?sort=drop').then(r => r.json());
+    applyFilters();
+  } catch(e) {
+    showError(); console.error('Listings:', e);
+  }
+}
+
+// City matching for pill sub-filter (handles accent variants + area grouping)
+const _CITY_PATTERNS = {
+  // Georgia
+  'Batumi':   /^batumi$/i,
+  // Malta
+  'Gozo':      /gozo|\b(victoria|xlendi|marsalforn|dwejra|san\s*lawrenz|nadur|ghajnsielem|xewkija|qala|xaghra|kercem|fontana|munxar|ghasri|gharb|ta['']pinu|sannat)\b/i,
+  'Valletta':  /^(valletta|il-belt|floriana|cospicua|senglea|vittoriosa|birgu|bormla)$/i,
+  'Sliema':    /^(sliema|ta['']?\s*xbiex|msida|gzira|pieta['']?)$/i,
+  'StJulians': /^(st\.?\s*julian['']?s?|san\s*[ġg]iljan|spinola|paceville|swieqi|pembroke)$/i,
+  // Albania
+  'Tirana':   /^tiran[aë]$/i,
+  'Durres':   /^durrë?s$|^durres$/i,
+  // Spain — regions
+  'Costa del Sol': /^(marbella|mijas|estepona|nerja|fuengirola|benalm[aá]dena|torremolinos|m[aá]laga|casares|manilva|la\s*cala\s*de\s*mijas|benahavis|benahav[ií]s|sotogrande|el\s*madro[ñn]al)$/i,
+  'Costa Blanca':  /^(alicante|torrevieja|benidorm|calpe|polop|altea|denia|javea|xabia|finestrat|los\s*alc[aá]zares|orihuela|rojales|guardamar|villajoyosa|alfaz\s*del\s*pi|el\s*campello|la\s*marina|punta\s*prima|san\s*javier)$/i,
+  'Barcelona':     /^(barcelona|l'eixample|eixample|lloret\s*de\s*mar|blanes|sitges|girona|roses|empuriabrava|tossa\s*de\s*mar|platja\s*d['']aro|castell\s*platja|sant\s*andreu|pedralbes|avinguda|vilanova|sant\s*andreu\s*de\s*llavaneres|costa\s*brava)$/i,
+  'Tenerife':      /^(tenerife|playa\s*para[ií]so|los\s*cristianos|costa\s*adeje|fanabe|fa[ñn]abe|puerto\s*de\s*santiago|santa\s*cruz\s*de\s*tenerife|el\s*m[eé]dano|golf\s*del\s*sur|la\s*caleta|adeje|guia\s*de\s*isora|callao\s*salvaje|puerto\s*de\s*la\s*cruz|tamaimo|los\s*gigantes|san\s*miguel\s*de\s*abona|las\s*galletas|arona|playa\s*san\s*juan|roque\s*del\s*conde)$/i,
+  'Mallorca':      /^(mallorca|palma|pollensa|alcudia|andratx|s[oó]ller|port\s*de\s*poll[eè]n[cç]a|santa\s*ponsa|calvi[àa]|calvia|sol\s*de\s*mallorca|costa\s*de\s*la\s*calma|puerto?\s*de?\s*andratx|port\s*d['']andratx|camp\s*de\s*mar|portals\s*nous|cas\s*catala|illetes|bendinat|portals\s*vells|cala\s*millor|cala\s*d['']or|cala\s*ratjada|porto\s*cristo)$/i,
+  'Madrid':        /^(madrid(?:\s*\(city\))?)$/i,
+  // Greece — islands & regions
+  'Athens':      /^(athens|attica|varkiza|voula|glyfada|alimos|piraeus|kallithea|palaio\s*faliro|agia\s*paraskevi|agia\s*varvara|gazi|marousi|moschato|vrilissia|nikaia|peristeri|argiroupoli|lagonisi|saronida|nea\s*smyrni|ilioupoli|koukaki|exarcheia|psyri|dafni|keramikos|neos\s*kosmos|egaleo|nea\s*filadelfeia|acharnes|korydallos|tavros|athenian\s*riviera|rafina|ano\s*liosia|panorama)$/i,
+  'Crete':       /^(crete|kriti|heraklion|iraklion|rethymno|rethimnon|r[ée]thymno|chania|elounda|lasithi|sitia|maleme|almyrida|gavalohori|kalyves|kalo\s*chorio|ierapetra|agios\s*nikolaos|plaka|ammoudara|kissamos|sisi|milatos|kokkini\s*hani|kalathas|kolymvari|gerani)$/i,
+  'Santorini':   /^santorini$/i,
+  'Mykonos':     /^mykonos$/i,
+  'Paros':       /^paros$/i,
+  'Rhodes':      /^(rhodes|rodos|rhodos)$/i,
+  'Kos':         /^kos$/i,
+  'Corfu':       /^(corfu|kerkyra)$/i,
+  'Halkidiki':   /^(halkidiki|chalkidiki|kassandreia|sithonia|nikiti|neos\s*marmaras|nea\s*moudania|pefkochori|kallithea\s*chalkidikis|sani|chaniotis|ormylia|stavros)$/i,
+  'Peloponnese': /^(peloponnese|nafplio|kalamata|messenia|kyparissia|korinthia|korinthos|xilokastro|vrachati|loutraki|kranidi|porto\s*cheli|ermioni|kineta)$/i,
+};
+function _cityMatches(listingCity, filterCity) {
+  const pat = _CITY_PATTERNS[filterCity];
+  return pat ? pat.test((listingCity || '').trim()) : false;
+}
+
+// Albania always restricted to Tirana + Durres area
+const _ALBANIA_SHOWN = /^(tiran[aë]|durrë?s|durres)$/i;
+
+function applyFilters() {
+  const search       = id('search-input').value.toLowerCase().trim();
+  const sort         = id('sort-select').value;
+  const portal       = id('portal-select').value;
+  const country      = id('country-select').value;
+  const minDrop      = parseFloat(id('min-drop-slider').value) || 0;
+  const maxDrop      = parseFloat(id('max-drop-slider').value) || 50;
+  const maxPriceRaw  = parseFloat(id('max-price-input').value) || 0;
+  const maxPriceCur  = activeCurrency;   // follows the USD/EUR toggle
+
+  const LIVE_MARKETS = ['Georgia', 'Albania', 'Malta', 'Greece', 'Spain'];
+
+  let filtered = allListings.filter(l => {
+    // Without explicit country filter show only live markets
+    if (!country && !LIVE_MARKETS.includes(l.country)) return false;
+    if (country && l.country !== country) return false;
+    // Albania always restricted to Tirana + Durres
+    if (l.country === 'Albania' && !_ALBANIA_SHOWN.test((l.city || '').trim())) return false;
+    // City sub-filter from expandable pill
+    if (activePillCity && !_cityMatches(l.city, activePillCity)) return false;
+    if (portal && l.portal !== portal) return false;
+    // minDrop=0 → show all (including no-drop); minDrop>0 → must have a real drop >= minDrop%
+    if (minDrop === 0) { /* show all */ }
+    else if (l.drop_pct == null || l.drop_pct >= 0 || l.drop_pct > -minDrop) return false;
+    if (maxDrop < 50 && l.drop_pct < -maxDrop) return false;
+    // Max price filter — convert listing price to the filter's chosen currency
+    if (maxPriceRaw > 0 && l.price != null) {
+      const priceInFilterCur = convertTo(l.price, l.currency || 'USD', maxPriceCur);
+      if (priceInFilterCur != null && priceInFilterCur > maxPriceRaw) return false;
+    }
+    if (search) {
+      const hay = `${l.title||''} ${l.neighborhood||''} ${l.city||''} ${l.country||''}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  const sortFns = {
+    drop:       (a,b) => a.drop_pct - b.drop_pct,
+    latest:     (a,b) => (b.last_seen_at||'').localeCompare(a.last_seen_at||''),
+    price_asc:  (a,b) => (a.price||0) - (b.price||0),
+    price_desc: (a,b) => (b.price||0) - (a.price||0),
+    area:       (a,b) => (b.area_sqm||0) - (a.area_sqm||0),
+  };
+  filtered.sort(sortFns[sort] || sortFns.drop);
+
+  const _t = DASH_T[_dashLang] || DASH_T.en;
+  id('result-count').textContent = _t.listing_count(filtered.length, allListings.length);
+
+  filteredListings = filtered;
+  updateMarketPills();
+  renderListings(filtered);
+}
+
+// ─── Card render ──────────────────────────────────────────────────────────────
+function renderListings(listings) {
+  const grid = id('listings-grid');
+  if (!listings.length) {
+    const _t = DASH_T[_dashLang] || DASH_T.en;
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="icon">🏠</div><h3>${_t.no_listings}</h3><p>${_t.no_listings_hint}</p></div>`;
+    return;
+  }
+  grid.innerHTML = listings.map(renderCard).join('');
+}
+
+function proxyImg(url) {
+  if (!url) return url;
+  if (url.includes('tranio.com/photos/')) return `/api/proxy-image?url=${encodeURIComponent(url)}`;
+  return url;
+}
+
+function renderCard(l) {
+  const drop     = l.drop_pct;
+  const hasDrop  = drop < -1 && !l.drop_suspicious;
+  const imgs     = (l.images || (l.image_url ? [l.image_url] : [])).map(proxyImg);
+  const photoCount = imgs.length;
+  const badgeCls = Math.abs(drop) >= 10 ? 'drop-badge' : 'drop-badge small';
+
+  // Build image HTML — show first image, dots navigation
+  let imgHtml = '';
+  if (imgs.length > 0) {
+    imgHtml = `
+      <img id="card-img-${l.id}" src="${esc(imgs[0])}" alt="" loading="lazy"
+           onerror="this.style.display='none';document.getElementById('card-ph-${l.id}').style.display='flex';" />
+      <div class="prop-placeholder" id="card-ph-${l.id}" style="display:none">🏢</div>`;
+    if (imgs.length > 1) {
+      imgHtml += `
+        <button class="card-arrow prev" onclick="cardPrev(event,${l.id},${JSON.stringify(imgs).replace(/"/g,'&quot;')})">‹</button>
+        <button class="card-arrow next" onclick="cardNext(event,${l.id},${JSON.stringify(imgs).replace(/"/g,'&quot;')})">›</button>
+        <div class="card-dots" id="card-dots-${l.id}">
+          ${imgs.map((_,i) => `<span class="card-dot${i===0?' active':''}"></span>`).join('')}
+        </div>`;
+    }
+  } else {
+    imgHtml = `<div class="prop-placeholder">🏢</div>`;
+  }
+
+  const specs = [
+    l.rooms     ? `🛏 ${l.rooms} rm`                                       : null,
+    l.area_sqm  ? `📐 ${l.area_sqm} m²`                                    : null,
+    (l.floor && l.total_floors) ? `🏢 ${l.floor}/${l.total_floors}F`        : null,
+  ].filter(Boolean).map(s => `<span class="spec-chip">${s}</span>`).join('');
+
+  return `
+    <div class="listing-card" onclick="openModal(${l.id})" role="button" tabindex="0"
+         onkeydown="if(event.key==='Enter')openModal(${l.id})" data-idx="${l.id}">
+      <div class="prop-img-wrap">
+        ${imgHtml}
+        ${hasDrop ? `<span class="${badgeCls}">↓ ${Math.abs(drop).toFixed(1)}%</span>` : ''}
+        ${photoCount > 1 ? `<span class="photo-count-badge">📷 ${photoCount}</span>` : ''}
+        <span class="portal-badge">${countryFlag(l.country)} ${esc(l.portal)}</span>
+      </div>
+      <div class="card-body">
+        <div class="price-row">
+          <span class="price-current">${fmtPrice(l.price, l.currency)}</span>
+          ${hasDrop ? `<span class="price-original">${fmtPrice(l.max_price, l.currency)}</span>` : ''}
+        </div>
+        <div class="card-title">
+          <a href="${esc(l.url||'#')}" target="_blank" rel="noopener"
+             onclick="event.stopPropagation()">${esc(l.title||'Apartment in Batumi')}</a>
+        </div>
+        <div class="card-location">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          ${esc([l.neighborhood,l.city].filter(Boolean).join(', ')||'Batumi, Georgia')}
+        </div>
+        ${specs ? `<div class="card-specs">${specs}</div>` : ''}
+        <div class="card-actions">
+          <button class="btn-history">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Price History
+          </button>
+          <a class="btn-ext-card" href="${esc(l.url||'#')}" target="_blank" rel="noopener"
+             onclick="event.stopPropagation()" title="Open on ${esc(l.portal)}">
+            ↗
+          </a>
+          ${l.phone ? `<a class="btn-whatsapp" href="https://wa.me/${esc(l.phone)}" target="_blank" rel="noopener"
+             onclick="event.stopPropagation()" title="WhatsApp: +${esc(l.phone)}">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.116 1.524 5.849L.057 23.994l6.304-1.654A11.954 11.954 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.006-1.371l-.36-.213-3.721.976.994-3.622-.234-.373A9.818 9.818 0 012.182 12C2.182 6.58 6.58 2.182 12 2.182c5.42 0 9.818 4.398 9.818 9.818 0 5.42-4.398 9.818-9.818 9.818z"/></svg>
+          </a>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── Card mini-carousel ───────────────────────────────────────────────────────
+const _cardIndices = {};
+
+function _setCardImage(listingId, imgs, index) {
+  const imgEl  = document.getElementById(`card-img-${listingId}`);
+  const dots   = document.getElementById(`card-dots-${listingId}`);
+  if (!imgEl) return;
+  const i = (index + imgs.length) % imgs.length;
+  _cardIndices[listingId] = i;
+  imgEl.src = imgs[i];
+  if (dots) {
+    dots.querySelectorAll('.card-dot').forEach((d,j) => d.classList.toggle('active', j === i));
+  }
+}
+
+function cardPrev(e, id, imgs) {
+  e.stopPropagation();
+  _setCardImage(id, imgs, (_cardIndices[id] ?? 0) - 1);
+}
+function cardNext(e, id, imgs) {
+  e.stopPropagation();
+  _setCardImage(id, imgs, (_cardIndices[id] ?? 0) + 1);
+}
+
+// ─── Modal ────────────────────────────────────────────────────────────────────
+function openModal(listingIdOrObj) {
+  const l = (typeof listingIdOrObj === 'object')
+    ? listingIdOrObj
+    : allListings.find(x => x.id === listingIdOrObj);
+  if (!l) return;
+  currentListing = l;
+
+  // Gallery
+  galleryImages = (l.images || (l.image_url ? [l.image_url] : [])).map(proxyImg);
+  galleryIndex  = 0;
+  renderModalGallery();
+
+  // Stats
+  set('modal-title',         l.title || 'Property Details');
+  set('modal-price-current', fmtPrice(l.price,     l.currency));
+  set('modal-price-peak',    fmtPrice(l.max_price,  l.currency));
+  set('modal-drop',          l.drop_pct < -.5 ? `↓ ${Math.abs(l.drop_pct).toFixed(1)}%` : 'No drop');
+
+  // Detail chips
+  const chips = [
+    l.rooms                     ? `🛏 ${l.rooms} room${l.rooms!==1?'s':''}` : null,
+    l.area_sqm                  ? `📐 ${l.area_sqm} m²`                     : null,
+    l.floor && l.total_floors   ? `🏢 Floor ${l.floor} / ${l.total_floors}` : null,
+    l.neighborhood              ? `📍 ${l.neighborhood}`                     : null,
+  ].filter(Boolean);
+  id('modal-details').innerHTML = chips.map(c => `<span class="spec-chip" style="font-size:12px;padding:4px 10px;">${esc(c)}</span>`).join('');
+
+  // Chart
+  if (priceChart) { priceChart.destroy(); priceChart = null; }
+  const history = l.history || [];
+
+  // Single price point — show "just started tracking" placeholder
+  const chartWrap = id('price-chart').parentElement;
+  if (history.length < 2) {
+    const p0 = history[0];
+    chartWrap.innerHTML = `<div style="height:240px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;border:1px dashed #1e293b;border-radius:12px;">
+      <div style="font-size:32px;">📡</div>
+      <div style="font-size:14px;font-weight:600;color:#cbd5e1;">Tracking started</div>
+      <div style="font-size:13px;color:#475569;text-align:center;max-width:280px;line-height:1.6;">
+        First price recorded: <strong style="color:#f1f5f9;">${p0 ? fmtPrice(p0.price, p0.currency) : '—'}</strong><br/>
+        Price history will appear after the next daily scan.
+      </div>
+    </div>`;
+  } else {
+    // restore canvas if we replaced it before
+    if (!id('price-chart')) {
+      chartWrap.innerHTML = '<canvas id="price-chart"></canvas>';
+    }
+    const ctx = id('price-chart').getContext('2d');
+    priceChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels:   history.map(h => fmtDate(new Date(h.recorded_at))),
+        datasets: [{
+          label: `Price (${activeCurrency})`,
+          data:  history.map(h => convertPrice(h.price)),
+          borderColor:       '#3b82f6',
+          backgroundColor:   'rgba(59,130,246,.08)',
+          pointBackgroundColor: '#3b82f6',
+          pointRadius: 5, pointHoverRadius: 7,
+          tension: 0.3, fill: true, borderWidth: 2,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1e293b', borderColor: '#334155', borderWidth: 1,
+            titleColor: '#94a3b8', bodyColor: '#f1f5f9',
+            callbacks: { label: ctx => ` ${fmtPrice(ctx.parsed.y, l.currency)}` },
+          },
+        },
+        scales: {
+          y: { grid: { color: '#1a2435' }, ticks: { color: '#64748b', callback: v => { const sym = activeCurrency==='EUR'?'€':'$'; return sym+(convertPrice(v)/1000).toFixed(0)+'k'; } } },
+          x: { grid: { color: '#1a2435' }, ticks: { color: '#64748b', maxRotation: 30 } },
+        },
+      },
+    });
+  } // end else (history.length >= 2)
+
+  // History table
+  id('modal-history-rows').innerHTML = [...history].reverse().map((h, i) => {
+    const chg = h.change_pct;
+    const chgStr = chg < -.1
+      ? `<span class="change-down">↓ ${Math.abs(chg).toFixed(1)}%</span>`
+      : `<span class="change-flat">—</span>`;
+    return `<tr>
+      <td>${fmtDate(new Date(h.recorded_at))}</td>
+      <td><strong>${fmtPrice(h.price, h.currency)}</strong></td>
+      <td>${i === history.length - 1 ? `<span class="change-flat">${(DASH_T[_dashLang]||DASH_T.en).first_seen_label}</span>` : chgStr}</td>
+    </tr>`;
+  }).join('');
+
+  // Footer
+  const extLink = id('modal-ext-link');
+  extLink.href = l.url || '#';
+  extLink.textContent = `${(DASH_T[_dashLang]||DASH_T.en).view_on} ${l.portal} ↗`;
+
+  const waBtn = id('modal-whatsapp');
+  if (l.phone) {
+    waBtn.href = `https://wa.me/${l.phone}`;
+    waBtn.style.display = 'inline-flex';
+  } else {
+    waBtn.style.display = 'none';
+  }
+
+  const _tm = DASH_T[_dashLang] || DASH_T.en;
+  id('modal-meta').textContent =
+    `${_tm.first_seen} ${fmtDate(new Date(l.first_seen_at))} · ${history.length} price point${history.length!==1?'s':''}`;
+
+  id('modal-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+// ─── Modal gallery ────────────────────────────────────────────────────────────
+function renderModalGallery() {
+  const wrap = id('modal-gallery');
+  if (!galleryImages.length) {
+    wrap.innerHTML = '';
+    return;
+  }
+
+  const thumbs = galleryImages.map((src, i) => `
+    <div class="gallery-thumb${i===0?' active':''}" id="gthumb-${i}" onclick="setGalleryImage(${i})">
+      <img src="${esc(src)}" alt="" loading="lazy" />
+    </div>`).join('');
+
+  const navBtns = galleryImages.length > 1 ? `
+    <button class="gallery-nav-btn prev" onclick="shiftGallery(-1)">‹</button>
+    <button class="gallery-nav-btn next" onclick="shiftGallery(1)">›</button>
+    <span class="gallery-counter" id="gallery-counter">1 / ${galleryImages.length}</span>` : '';
+
+  wrap.innerHTML = `
+    <div class="gallery-wrap">
+      <div class="gallery-main" id="gallery-main">
+        <img id="gallery-main-img" src="${esc(galleryImages[0])}" alt=""
+             onerror="this.style.display='none';document.getElementById('gallery-ph').style.display='flex';" />
+        <div class="placeholder" id="gallery-ph" style="display:none;">🏢</div>
+        ${navBtns}
+      </div>
+      ${galleryImages.length > 1 ? `<div class="gallery-thumbs" id="gallery-thumbs">${thumbs}</div>` : ''}
+    </div>`;
+}
+
+function setGalleryImage(i) {
+  const imgs = galleryImages;
+  if (!imgs.length) return;
+  galleryIndex = (i + imgs.length) % imgs.length;
+
+  const mainImg = id('gallery-main-img');
+  if (mainImg) { mainImg.style.opacity = '0'; }
+  setTimeout(() => {
+    if (mainImg) { mainImg.src = imgs[galleryIndex]; mainImg.style.opacity = '1'; mainImg.style.display = ''; }
+    const ph = id('gallery-ph');
+    if (ph) ph.style.display = 'none';
+    const counter = id('gallery-counter');
+    if (counter) counter.textContent = `${galleryIndex+1} / ${imgs.length}`;
+    // Update active thumb
+    for (let j = 0; j < imgs.length; j++) {
+      const t = id(`gthumb-${j}`);
+      if (t) t.classList.toggle('active', j === galleryIndex);
+    }
+    // Scroll thumb into view
+    const activeThumb = id(`gthumb-${galleryIndex}`);
+    if (activeThumb) activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, 120);
+}
+
+function shiftGallery(dir) {
+  if (galleryImages.length < 2) return;
+  setGalleryImage(galleryIndex + dir);
+}
+
+function closeModal() {
+  id('modal-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  if (priceChart) { priceChart.destroy(); priceChart = null; }
+  currentListing = null;
+}
+
+function handleOverlayClick(e) {
+  if (e.target === id('modal-overlay')) closeModal();
+}
+
+// ─── Scrape trigger ───────────────────────────────────────────────────────────
+async function triggerScrape() {
+  const btn = id('btn-scrape');
+  const icon = id('scrape-icon');
+  btn.classList.add('running');
+  icon.innerHTML = '<span class="spin">⟳</span>';
+  try {
+    await fetch('/api/scrape', { method: 'POST' });
+    await new Promise(r => setTimeout(r, 3000));
+    await loadAll();
+  } catch(e) { console.error(e); }
+  finally { btn.classList.remove('running'); icon.textContent = '⟳'; }
+}
+
+// ─── Skeleton / error ─────────────────────────────────────────────────────────
+function showSkeletons(n) {
+  id('listings-grid').innerHTML = Array(n).fill(0).map(() => `
+    <div class="listing-card" style="pointer-events:none;">
+      <div class="skeleton" style="height:190px;border-radius:0;"></div>
+      <div class="card-body" style="gap:12px;">
+        <div class="skeleton" style="height:28px;width:50%;border-radius:6px;"></div>
+        <div class="skeleton" style="height:18px;width:80%;border-radius:6px;"></div>
+        <div class="skeleton" style="height:14px;width:60%;border-radius:6px;"></div>
+        <div style="display:flex;gap:8px;">
+          <div class="skeleton" style="height:24px;width:70px;border-radius:6px;"></div>
+          <div class="skeleton" style="height:24px;width:60px;border-radius:6px;"></div>
+        </div>
+        <div class="skeleton" style="height:36px;border-radius:8px;"></div>
+      </div>
+    </div>`).join('');
+}
+
+function showError() {
+  const _te = DASH_T[_dashLang] || DASH_T.en;
+  id('listings-grid').innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="icon">⚠️</div><h3>${_te.error_load}</h3><p>${_te.error_load_hint}</p></div>`;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function id(x)  { return document.getElementById(x); }
+function set(x, v) { const el = id(x); if (el) el.textContent = v; }
+
+const COUNTRY_FLAGS = { Georgia: '🇬🇪', Malta: '🇲🇹', Albania: '🇦🇱', Greece: '🇬🇷', Spain: '🇪🇸' };
+function countryFlag(country) { return COUNTRY_FLAGS[country] || '🌍'; }
+
+// Active city sub-filter set by pill submenu ('' = no city filter)
+let activePillCity = '';
+
+function _closePillMenus(except) {
+  ['Georgia','Albania','Malta','Greece','Spain'].forEach(c => {
+    if (c === except) return;
+    const sm = id(`submenu-${c}`);
+    const ar = id(`arrow-${c}`);
+    if (sm) sm.classList.remove('open');
+    if (ar) ar.classList.remove('open');
+  });
+}
+
+function togglePillGroup(country) {
+  const submenu = id(`submenu-${country}`);
+  const arrow   = id(`arrow-${country}`);
+  if (!submenu) { setMarketFilter(country); return; }
+  const isOpen  = submenu.classList.contains('open');
+
+  _closePillMenus(country);
+  activePillCity = '';
+
+  if (isOpen) {
+    // Collapse — also deselect country if it was selected
+    submenu.classList.remove('open');
+    arrow.classList.remove('open');
+    if (id('country-select').value === country) {
+      id('country-select').value = '';
+    }
+  } else {
+    submenu.classList.add('open');
+    arrow.classList.add('open');
+    id('country-select').value = country;
+  }
+  applyFilters();
+  updateMarketPills();
+}
+
+function setPillCity(country, city) {
+  // If already active city — clicking again deselects city (keep country)
+  if (id('country-select').value === country && activePillCity === city) {
+    activePillCity = '';
+  } else {
+    id('country-select').value = country;
+    activePillCity = city;
+  }
+  applyFilters();
+  updateMarketPills();
+}
+
+function setMarketFilter(country) {
+  // Used by Malta / Greece pills (no submenu)
+  _closePillMenus(null);
+  activePillCity = '';
+  const sel = id('country-select');
+  sel.value = sel.value === country ? '' : country;
+  applyFilters();
+  updateMarketPills();
+}
+
+// Close pill submenus when clicking outside
+document.addEventListener('click', e => {
+  if (!e.target.closest('.pill-group')) {
+    _closePillMenus(null);
+    ['Georgia','Albania','Malta','Greece','Spain'].forEach(c => {
+      const ar = id(`arrow-${c}`);
+      if (ar) ar.classList.remove('open');
+    });
+  }
+});
+
+function updateMarketPills() {
+  const active = id('country-select').value;
+  ['Georgia', 'Albania', 'Malta', 'Greece', 'Spain'].forEach(c => {
+    const pill = id(`pill-${c}`);
+    if (!pill) return;
+    pill.classList.toggle('active', active === c);
+  });
+  // Sub-item active states
+  [
+    ['Georgia','Batumi'],
+    ['Albania','Tirana'],['Albania','Durres'],
+    ['Malta','Gozo'],['Malta','Valletta'],['Malta','Sliema'],['Malta','StJulians'],
+    ['Spain','Costa del Sol'],['Spain','Costa Blanca'],['Spain','Barcelona'],
+    ['Spain','Tenerife'],['Spain','Mallorca'],['Spain','Madrid'],
+    ['Greece','Athens'],['Greece','Crete'],['Greece','Santorini'],
+    ['Greece','Mykonos'],['Greece','Paros'],['Greece','Corfu'],
+    ['Greece','Halkidiki'],['Greece','Peloponnese'],
+  ].forEach(([c, city]) => {
+    const el = id(`subcity-${c}-${city}`);
+    if (!el) return;
+    el.classList.toggle('active', active === c && activePillCity === city);
+  });
+}
+
+const USD_TO_EUR = 0.92;
+let activeCurrency = localStorage.getItem('hc_currency') || 'USD';
+
+const EUR_TO_USD = 1 / USD_TO_EUR;
+
+function convertTo(p, sourceCurrency, targetCurrency) {
+  if (p == null) return null;
+  const src = (sourceCurrency || 'USD').toUpperCase();
+  const tgt = (targetCurrency  || 'USD').toUpperCase();
+  if (src === tgt) return p;
+  return src === 'EUR' ? p * EUR_TO_USD : p * USD_TO_EUR;
+}
+
+function convertPrice(p, sourceCurrency) {
+  return convertTo(p, sourceCurrency, activeCurrency);
+}
+
+function fmtPrice(p, sourceCurrency) {
+  if (p == null) return '—';
+  const v = convertPrice(p, sourceCurrency);
+  const sym = activeCurrency === 'EUR' ? '€' : '$';
+  return sym + Math.round(v).toLocaleString('en-US');
+}
+
+function setCurrency(c) {
+  activeCurrency = c;
+  localStorage.setItem('hc_currency', c);
+  const lbl = id('max-price-currency-label');
+  if (lbl) lbl.textContent = c;
+  id('btn-usd').style.background = c === 'USD' ? '#3b82f6' : '#1e293b';
+  id('btn-usd').style.color      = c === 'USD' ? '#fff'    : '#64748b';
+  id('btn-eur').style.background = c === 'EUR' ? '#3b82f6' : '#1e293b';
+  id('btn-eur').style.color      = c === 'EUR' ? '#fff'    : '#64748b';
+  // Update prices in-place on every visible card (no full re-render = no flicker)
+  filteredListings.forEach(l => {
+    const curr = document.querySelector(`[data-idx="${l.id}"] .price-current`);
+    const orig = document.querySelector(`[data-idx="${l.id}"] .price-original`);
+    if (curr) curr.textContent = fmtPrice(l.price,     l.currency);
+    if (orig) orig.textContent = fmtPrice(l.max_price, l.currency);
+  });
+  // Also fix chart Y axis if modal is closed
+  if (!currentListing) {
+    const ytick = document.querySelector('.price-current'); // just trigger repaint
+    if (ytick) ytick.getBoundingClientRect();
+  }
+  // Refresh open modal (chart + prices)
+  if (currentListing) openModal(currentListing);
+}
+function fmtDate(d) {
+  return d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+}
+function timeAgo(d) {
+  const m = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h/24)}d ago`;
+}
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── i18n ──────────────────────────────────────────────────────────────────────
+const DASH_T = {
+  en: {
+    scrape_btn:          'Scrape Now',
+    stat_tracked:        'Listings Tracked',
+    stat_drops:          'Active Price Drops',
+    stat_biggest:        'Biggest Drop',
+    stat_avg:            'Average Drop',
+    search_placeholder:  '🔍  Search by title or area…',
+    sort_drop:           'Sort: Biggest Drop',
+    sort_latest:         'Sort: Most Recent',
+    sort_price_asc:      'Sort: Price ↑',
+    sort_price_desc:     'Sort: Price ↓',
+    sort_area:           'Sort: Largest Area',
+    all_markets:         '🌍 All Markets',
+    all_portals:         'All Portals',
+    filter_min_drop:     'Min drop',
+    filter_max_drop:     'Max drop',
+    filter_max_price:    'Max price',
+    filter_no_limit:     'no limit',
+    modal_current_price: 'Current Price',
+    modal_peak_price:    'Peak Price',
+    modal_total_drop:    'Total Drop',
+    modal_price_history: 'Price History',
+    modal_all_changes:   'All Price Changes',
+    modal_th_date:       'Date',
+    modal_th_price:      'Price',
+    modal_th_change:     'Change',
+    no_listings:         'No listings found',
+    no_listings_hint:    'Try adjusting your filters, or click <strong>Scrape Now</strong> to fetch fresh data.',
+    error_load:          'Could not load listings',
+    error_load_hint:     'Make sure the server is running.',
+    first_seen:          'First seen',
+    view_on:             'View on',
+    first_seen_label:    'First seen',
+    tracking_start:      'Tracking started',
+    listing_count:       (n, total) => n === total ? `${n} listings` : `${n} of ${total}`,
+  },
+  pl: {
+    scrape_btn:          'Odśwież dane',
+    stat_tracked:        'Śledzonych ofert',
+    stat_drops:          'Aktywne spadki cen',
+    stat_biggest:        'Największy spadek',
+    stat_avg:            'Średni spadek',
+    search_placeholder:  '🔍  Szukaj po tytule lub mieście…',
+    sort_drop:           'Sortuj: Największy spadek',
+    sort_latest:         'Sortuj: Najnowsze',
+    sort_price_asc:      'Sortuj: Cena ↑',
+    sort_price_desc:     'Sortuj: Cena ↓',
+    sort_area:           'Sortuj: Największa pow.',
+    all_markets:         '🌍 Wszystkie rynki',
+    all_portals:         'Wszystkie portale',
+    filter_min_drop:     'Min spadek',
+    filter_max_drop:     'Max spadek',
+    filter_max_price:    'Max cena',
+    filter_no_limit:     'bez limitu',
+    modal_current_price: 'Aktualna cena',
+    modal_peak_price:    'Cena szczytowa',
+    modal_total_drop:    'Łączny spadek',
+    modal_price_history: 'Historia cen',
+    modal_all_changes:   'Wszystkie zmiany cen',
+    modal_th_date:       'Data',
+    modal_th_price:      'Cena',
+    modal_th_change:     'Zmiana',
+    no_listings:         'Brak ofert',
+    no_listings_hint:    'Spróbuj zmienić filtry lub kliknij <strong>Odśwież dane</strong>.',
+    error_load:          'Nie można załadować ofert',
+    error_load_hint:     'Upewnij się, że serwer działa.',
+    first_seen:          'Pierwsze wykrycie',
+    view_on:             'Otwórz na',
+    first_seen_label:    'Pierwsze wykrycie',
+    tracking_start:      'Rozpoczęto śledzenie',
+    listing_count:       (n, total) => n === total ? `${n} ofert` : `${n} z ${total}`,
+  },
+  es: {
+    scrape_btn:          'Actualizar datos',
+    stat_tracked:        'Anuncios seguidos',
+    stat_drops:          'Bajadas activas',
+    stat_biggest:        'Mayor bajada',
+    stat_avg:            'Bajada media',
+    search_placeholder:  '🔍  Buscar por título o zona…',
+    sort_drop:           'Ordenar: Mayor bajada',
+    sort_latest:         'Ordenar: Más recientes',
+    sort_price_asc:      'Ordenar: Precio ↑',
+    sort_price_desc:     'Ordenar: Precio ↓',
+    sort_area:           'Ordenar: Mayor superficie',
+    all_markets:         '🌍 Todos los mercados',
+    all_portals:         'Todos los portales',
+    filter_min_drop:     'Bajada mín.',
+    filter_max_drop:     'Bajada máx.',
+    filter_max_price:    'Precio máx.',
+    filter_no_limit:     'sin límite',
+    modal_current_price: 'Precio actual',
+    modal_peak_price:    'Precio máximo',
+    modal_total_drop:    'Bajada total',
+    modal_price_history: 'Historial de precios',
+    modal_all_changes:   'Todos los cambios',
+    modal_th_date:       'Fecha',
+    modal_th_price:      'Precio',
+    modal_th_change:     'Cambio',
+    no_listings:         'No se encontraron anuncios',
+    no_listings_hint:    'Prueba a cambiar los filtros o haz clic en <strong>Actualizar datos</strong>.',
+    error_load:          'No se pudieron cargar los anuncios',
+    error_load_hint:     'Asegúrate de que el servidor está en funcionamiento.',
+    first_seen:          'Visto por primera vez',
+    view_on:             'Ver en',
+    first_seen_label:    'Visto por primera vez',
+    tracking_start:      'Seguimiento iniciado',
+    listing_count:       (n, total) => n === total ? `${n} anuncios` : `${n} de ${total}`,
+  },
+};
+
+let _dashLang = localStorage.getItem('hc_lang') || 'en';
+
+function toggleDashLangMenu() {
+  const menu = document.getElementById('dash-lang-menu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+document.addEventListener('click', e => {
+  const sw = document.getElementById('dash-lang-switcher');
+  if (sw && !sw.contains(e.target)) document.getElementById('dash-lang-menu').style.display = 'none';
+});
+
+function dashSetLang(lang) {
+  _dashLang = lang;
+  localStorage.setItem('hc_lang', lang);
+  document.getElementById('dash-lang-menu').style.display = 'none';
+  const flags = { en: '🇬🇧', pl: '🇵🇱', es: '🇪🇸' };
+  const codes  = { en: 'EN',   pl: 'PL',   es: 'ES' };
+  document.getElementById('dash-lang-flag').textContent = flags[lang];
+  document.getElementById('dash-lang-code').textContent = codes[lang];
+  applyDashTranslations();
+  // Re-render listings to pick up translated strings
+  renderListings(filteredListings);
+  if (filteredListings.length > 0) {
+    const t = DASH_T[lang] || DASH_T.en;
+    id('result-count').textContent = t.listing_count(filteredListings.length, allListings.length);
+  }
+}
+
+function applyDashTranslations() {
+  const t = DASH_T[_dashLang] || DASH_T.en;
+
+  // data-i18n text
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key] !== undefined) el.innerHTML = t[key];
+  });
+
+  // data-i18n-placeholder
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const key = el.getAttribute('data-i18n-placeholder');
+    if (t[key] !== undefined) el.placeholder = t[key];
+  });
+
+  // select options
+  document.querySelectorAll('option[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (t[key] !== undefined) el.textContent = t[key];
+  });
+}
+
+// Apply saved language on load
+document.addEventListener('DOMContentLoaded', () => {
+  if (_dashLang !== 'en') {
+    const flags = { pl: '🇵🇱', es: '🇪🇸' };
+    const codes  = { pl: 'PL',   es: 'ES' };
+    document.getElementById('dash-lang-flag').textContent = flags[_dashLang] || '🇬🇧';
+    document.getElementById('dash-lang-code').textContent = codes[_dashLang] || 'EN';
+    applyDashTranslations();
+  }
+}, { once: false }); // runs alongside existing DOMContentLoaded
+</script>
+</body>
+</html>
