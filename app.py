@@ -247,26 +247,13 @@ def _to_dict(l: Listing) -> dict:
 
 @app.get("/api/ticker")
 async def get_ticker(db: Session = Depends(get_db)):
-    """Return top 30 real price drops for the scrolling ticker bar."""
+    """Return top 30 price drops for ticker; fall back to recent listings when no drops exist."""
+    import random as _rnd
     listings = db.query(Listing).filter(Listing.is_active == True).all()
-    items = []
+    drop_items = []
     now = datetime.utcnow()
-    for l in listings:
-        drop_pct, suspicious = _validate_drop(l)
-        if suspicious or drop_pct >= -1.0:
-            continue
-        # human-readable time ago
-        ts = l.last_seen_at or l.last_scraped_at or now
-        diff = now - ts
-        mins = int(diff.total_seconds() / 60)
-        if mins < 60:
-            ago = f"{mins}m ago"
-        elif mins < 1440:
-            ago = f"{mins // 60}h ago"
-        else:
-            ago = f"{mins // 1440}d ago"
 
-        # short label: "2BR · Batumi" or just "Batumi"
+    def _make_label(l: Listing) -> str:
         parts = []
         if l.rooms:
             parts.append(f"{l.rooms}BR")
@@ -274,41 +261,71 @@ async def get_ticker(db: Session = Depends(get_db)):
             parts.append(l.city)
         elif l.country:
             parts.append(l.country)
-        label = " · ".join(parts) if parts else (l.country or "")
+        return " · ".join(parts) if parts else (l.country or "")
 
-        items.append({
-            "label":    label,
+    def _ago(ts) -> str:
+        diff = now - (ts or now)
+        mins = int(diff.total_seconds() / 60)
+        if mins < 60:   return f"{mins}m ago"
+        if mins < 1440: return f"{mins // 60}h ago"
+        return f"{mins // 1440}d ago"
+
+    for l in listings:
+        drop_pct, suspicious = _validate_drop(l)
+        if suspicious or drop_pct >= -1.0:
+            continue
+        ts = l.last_seen_at or l.last_scraped_at or now
+        drop_items.append({
+            "label":    _make_label(l),
             "drop_pct": drop_pct,
-            "ago":      ago,
+            "price":    None,
+            "currency": None,
+            "ago":      _ago(ts),
             "country":  l.country or "",
             "url":      l.url or "#",
+            "kind":     "drop",
         })
 
-    # Spread across drop-% brackets so ticker shows variety, not just outliers
-    import random as _rnd
-    brackets = [
-        (1,  7,  6),   # small drops  -1% – -7%
-        (7,  15, 6),   # medium drops -7% – -15%
-        (15, 25, 6),   # solid drops  -15% – -25%
-        (25, 50, 6),   # big drops    -25% – -50%
-        (50, 999, 4),  # extreme      -50%+
-    ]
-    seen_ids: set = set()
-    result: list = []
-    for lo, hi, picks in brackets:
-        bucket = [x for x in items if lo <= abs(x["drop_pct"]) < hi]
-        _rnd.shuffle(bucket)
-        for x in bucket[:picks]:
-            seen_ids.add(id(x))
-            result.append(x)
-    # fill remaining slots with anything not yet picked
-    for x in items:
-        if len(result) >= 30:
-            break
-        if id(x) not in seen_ids:
-            result.append(x)
-    _rnd.shuffle(result)   # final shuffle so order varies each refresh
-    return result[:30]
+    if drop_items:
+        brackets = [
+            (1,  7,  6), (7,  15, 6), (15, 25, 6), (25, 50, 6), (50, 999, 4),
+        ]
+        seen: set = set()
+        result: list = []
+        for lo, hi, picks in brackets:
+            bucket = [x for x in drop_items if lo <= abs(x["drop_pct"]) < hi]
+            _rnd.shuffle(bucket)
+            for x in bucket[:picks]:
+                seen.add(id(x))
+                result.append(x)
+        for x in drop_items:
+            if len(result) >= 30: break
+            if id(x) not in seen: result.append(x)
+        _rnd.shuffle(result)
+        return result[:30]
+
+    # ── No drops yet: show a varied sample of recent listings ──────────────
+    recent = sorted(
+        [l for l in listings if l.price and l.price > 0],
+        key=lambda l: l.first_seen_at or now,
+        reverse=True,
+    )[:200]
+    _rnd.shuffle(recent)
+    result = []
+    for l in recent[:30]:
+        ts = l.first_seen_at or now
+        price_str = f"${int(l.price):,}" if l.currency in (None, "USD") else f"€{int(l.price):,}" if l.currency == "EUR" else f"{int(l.price):,} {l.currency}"
+        result.append({
+            "label":    _make_label(l),
+            "drop_pct": None,
+            "price":    price_str,
+            "currency": l.currency,
+            "ago":      _ago(ts),
+            "country":  l.country or "",
+            "url":      l.url or "#",
+            "kind":     "new",
+        })
+    return result
 
 
 class TrackUrlRequest(BaseModel):
