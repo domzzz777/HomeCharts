@@ -1546,53 +1546,6 @@ def _safe_int(v) -> Optional[int]:
     return int(f) if f is not None else None
 
 
-async def scrape_tranio_extra(max_pages: int = 5) -> list[dict]:
-    """Scrape additional tranio.com markets: Montenegro and Portugal."""
-    FEEDS = [
-        ("https://tranio.com/montenegro/?page={page}", "Montenegro"),
-        ("https://tranio.com/portugal/?page={page}",   "Portugal"),
-        ("https://tranio.com/cyprus/?page={page}",     "Cyprus"),
-    ]
-    results: list[dict] = []
-    async with httpx.AsyncClient(
-        headers=TRANIO_HEADERS, timeout=30.0, follow_redirects=True
-    ) as client:
-        for url_tpl, country in FEEDS:
-            for page in range(1, max_pages + 1):
-                url = url_tpl.format(page=page)
-                for attempt in range(MAX_RETRIES):
-                    try:
-                        await asyncio.sleep(random.uniform(*REQUEST_DELAY))
-                        resp = await client.get(url)
-                        if resp.status_code in (403, 404):
-                            break
-                        resp.raise_for_status()
-                        soup = BeautifulSoup(resp.text, "html.parser")
-                        ld_scripts = soup.find_all("script", type="application/ld+json")
-                        page_items: list[dict] = []
-                        for s in ld_scripts:
-                            try:
-                                data = json.loads(s.string or "[]")
-                            except (json.JSONDecodeError, TypeError):
-                                continue
-                            items = data if isinstance(data, list) else [data]
-                            for item in items:
-                                types_str = str(item.get("@type", ""))
-                                if any(t in types_str for t in ("Apartment", "House", "Villa", "Residence")):
-                                    r = _parse_tranio_spain_listing(item)
-                                    if r:
-                                        r["country"] = country
-                                        r["city"] = r.get("city") or country
-                                        results.append(r)
-                                        page_items.append(r)
-                        if not page_items:
-                            logger.info(f"tranio {country}: no listings on page {page}, stopping feed")
-                            break
-                        logger.info(f"tranio {country} page {page}: {len(page_items)} listings")
-                        break
-                    except httpx.HTTPError as exc:
-                        logger.warning(f"tranio {country} page {page} attempt {attempt + 1}: {exc}")
-    return results
 
 
 async def run_scrape_all() -> None:
@@ -1606,7 +1559,6 @@ async def run_scrape_all() -> None:
         (scrape_c21_albania,    "century21albania.com"),
         (scrape_tranio_greece,  "tranio.com (Greece)"),
         (scrape_tranio_spain,   "tranio.com (Spain)"),
-        (scrape_tranio_extra,   "tranio.com (Montenegro/Portugal/Cyprus)"),
     ]:
         try:
             items = await fn()

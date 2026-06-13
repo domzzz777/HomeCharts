@@ -257,7 +257,7 @@ async def get_ticker(db: Session = Depends(get_db)):
         parts = []
         if l.rooms:
             parts.append(f"{l.rooms}BR")
-        if l.city and l.city not in ("Georgia", "Albania", "Malta", "Greece", "Spain", "Montenegro", "Portugal", "Cyprus"):
+        if l.city and l.city not in ("Georgia", "Albania", "Malta", "Greece", "Spain"):
             parts.append(l.city)
         elif l.country:
             parts.append(l.country)

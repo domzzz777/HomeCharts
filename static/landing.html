@@ -421,18 +421,14 @@
 <script>
 // ── Helpers ────────────────────────────────────────────────────────────────
 const COUNTRY_FLAGS = {
-  Georgia:'🇬🇪', Albania:'🇦🇱', Malta:'🇲🇹', Greece:'🇬🇷', Spain:'🇪🇸',
-  Montenegro:'🇲🇪', Portugal:'🇵🇹', Cyprus:'🇨🇾'
+  Georgia:'🇬🇪', Albania:'🇦🇱', Malta:'🇲🇹', Greece:'🇬🇷', Spain:'🇪🇸'
 };
 const COUNTRY_GRADS = {
-  Georgia:    'grad-georgia',
-  Albania:    'grad-albania',
-  Malta:      'grad-malta',
-  Greece:     'grad-greece',
-  Spain:      'grad-spain',
-  Montenegro: 'grad-montenegro',
-  Portugal:   'grad-portugal',
-  Cyprus:     'grad-cyprus',
+  Georgia: 'grad-georgia',
+  Albania: 'grad-albania',
+  Malta:   'grad-malta',
+  Greece:  'grad-greece',
+  Spain:   'grad-spain',
 };
 
 // Country card photos — all URLs verified 200 OK
@@ -1083,7 +1079,7 @@ async function loadTicker() {
         <span style="color:#1e293b;padding:0 12px">⬥</span>
         <span class="ticker-item" style="color:#475569;">
           <span style="color:#f59e0b;">●</span>
-          &nbsp;Georgia · Albania · Malta · Greece · Spain · Montenegro · Portugal · Cyprus
+          &nbsp;Georgia · Albania · Malta · Greece · Spain
         </span>
         <span style="color:#1e293b;padding:0 12px">⬥</span>
         <span class="ticker-item" style="color:#475569;">
@@ -1224,7 +1220,7 @@ const TRANSLATIONS = {
     nav_markets:        'Markets',
     nav_drops:          'Price Drops',
     nav_dashboard:      'Open Dashboard',
-    hero_badge:         'Live tracking · 8 markets · 1,492 listings',
+    hero_badge:         'Live tracking · 5 markets · 1,492 listings',
     hero_tagline:       'Where <em>smart investors</em> find the dip.<br/>Real estate price drops in emerging markets — tracked daily.',
     hero_track_label:   '— Track your listing below —',
     hero_placeholder:   'Paste a listing URL to start tracking…',
@@ -1252,7 +1248,7 @@ const TRANSLATIONS = {
     faq_items: [
       { q: 'What is HomeCharts?', a: 'HomeCharts is a real-time price drop tracker for emerging real estate markets. We monitor listing portals daily across Georgia, Albania, Malta, Greece, and Spain — surfacing only properties whose prices have genuinely dropped, so you never miss a deal.' },
       { q: 'Does HomeCharts use AI to track listings?', a: 'Yes. HomeCharts uses advanced AI-powered trackers that continuously scan thousands of listings, detect price changes, and automatically filter out suspicious or manipulated drops. Our validation engine applies machine-learning heuristics to distinguish real seller discounts from data noise — so every drop you see is real.' },
-      { q: 'Which markets and portals do you cover?', a: 'We currently track live listings from myhome.ge (Georgia · Batumi), century21albania.com (Albania · Tirana, Durrës), maltapark.com (Malta), and tranio.com covering Greece, Spain, Montenegro, Portugal, and Cyprus. Over 1,500 listings tracked across 8 markets. More countries are added regularly.' },
+      { q: 'Which markets and portals do you cover?', a: 'We currently track live listings from myhome.ge (Georgia · Batumi), century21albania.com (Albania · Tirana, Durrës), maltapark.com (Malta), and tranio.com covering Greece and Spain. Over 1,500 listings tracked across 5 markets. More countries are added regularly.' },
       { q: 'How often is the data updated?', a: 'Listings are re-scraped every 24 hours. Price drop percentages are calculated relative to the first recorded price, so even a slow, multi-step reduction is caught over time. The "last updated" timestamp in the dashboard shows exactly when the latest scan ran.' },
       { q: 'Why should I track price drops?', a: 'Price drops in emerging markets often signal motivated sellers — relocation, financial pressure, or developer oversupply. Catching a 15–30% reduction before the market corrects can mean significant equity on day one. HomeCharts does the daily monitoring so you don\'t have to.' },
       { q: 'What counts as a validated price drop?', a: 'A drop is shown only when two rules pass: (1) no single scan-to-scan drop exceeds 25% (prevents data errors), and (2) the total cumulative drop does not exceed 50%. This eliminates listing re-posts and price-manipulation artifacts. Drops are detected starting from the very next daily scan after a listing is first tracked.' },
@@ -1264,7 +1260,7 @@ const TRANSLATIONS = {
     nav_markets:        'Rynki',
     nav_drops:          'Spadki cen',
     nav_dashboard:      'Otwórz Dashboard',
-    hero_badge:         'Śledzenie na żywo · 8 rynków · 1 492 oferty',
+    hero_badge:         'Śledzenie na żywo · 5 rynków · 1 492 oferty',
     hero_tagline:       'Gdzie <em>mądrzy inwestorzy</em> łapią dołek.<br/>Spadki cen nieruchomości na wschodzących rynkach — monitorowane codziennie.',
     hero_track_label:   '— Śledź swoją nieruchomość poniżej —',
     hero_placeholder:   'Wklej link do ogłoszenia…',
@@ -1304,7 +1300,7 @@ const TRANSLATIONS = {
     nav_markets:        'Mercados',
     nav_drops:          'Bajadas de precio',
     nav_dashboard:      'Abrir Dashboard',
-    hero_badge:         'Seguimiento en vivo · 8 mercados · 1.492 propiedades',
+    hero_badge:         'Seguimiento en vivo · 5 mercados · 1.492 propiedades',
     hero_tagline:       'Donde los <em>inversores inteligentes</em> encuentran el mínimo.<br/>Bajadas de precio en mercados emergentes — seguidas cada día.',
     hero_track_label:   '— Rastrea tu inmueble abajo —',
     hero_placeholder:   'Pega el enlace del anuncio para empezar…',
