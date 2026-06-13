@@ -247,7 +247,7 @@ def _to_dict(l: Listing) -> dict:
 
 @app.get("/api/ticker")
 async def get_ticker(db: Session = Depends(get_db)):
-    """Return top 30 price drops for ticker; fall back to recent listings when no drops exist."""
+    """Return top 30 active price drops for the ticker."""
     import random as _rnd
     listings = db.query(Listing).filter(Listing.is_active == True).all()
     drop_items = []
@@ -257,7 +257,7 @@ async def get_ticker(db: Session = Depends(get_db)):
         parts = []
         if l.rooms:
             parts.append(f"{l.rooms}BR")
-        if l.city and l.city not in ("Georgia", "Albania", "Malta", "Greece", "Spain"):
+        if l.city and l.city not in ("Georgia", "Albania", "Malta", "Greece", "Spain", "Montenegro", "Portugal", "Cyprus"):
             parts.append(l.city)
         elif l.country:
             parts.append(l.country)
@@ -286,48 +286,25 @@ async def get_ticker(db: Session = Depends(get_db)):
             "kind":     "drop",
         })
 
-    if drop_items:
-        brackets = [
-            (1,  7,  6), (7,  15, 6), (15, 25, 6), (25, 50, 6), (50, 999, 4),
-        ]
-        seen: set = set()
-        result: list = []
-        for lo, hi, picks in brackets:
-            bucket = [x for x in drop_items if lo <= abs(x["drop_pct"]) < hi]
-            _rnd.shuffle(bucket)
-            for x in bucket[:picks]:
-                seen.add(id(x))
-                result.append(x)
-        for x in drop_items:
-            if len(result) >= 30: break
-            if id(x) not in seen: result.append(x)
-        _rnd.shuffle(result)
-        return result[:30]
+    if not drop_items:
+        return []
 
-    # ── No drops yet: show a varied sample of recent listings ──────────────
-    with_price = [l for l in listings if l.price and l.price > 0]
-    logger.info(f"ticker fallback: {len(listings)} listings, {len(with_price)} with price, {len(drop_items)} drops")
-    recent = sorted(with_price, key=lambda l: l.first_seen_at or now, reverse=True)[:200]
-    _rnd.shuffle(recent)
-    result = []
-    for l in recent[:30]:
-        try:
-            ts = l.first_seen_at or now
-            price_str = f"${int(l.price):,}" if l.currency in (None, "USD") else f"€{int(l.price):,}" if l.currency == "EUR" else f"{int(l.price):,} {l.currency}"
-            result.append({
-                "label":    _make_label(l),
-                "drop_pct": None,
-                "price":    price_str,
-                "currency": l.currency,
-                "ago":      _ago(ts),
-                "country":  l.country or "",
-                "url":      l.url or "#",
-                "kind":     "new",
-            })
-        except Exception as exc:
-            logger.warning(f"ticker item error for listing {l.id}: {exc}")
-    logger.info(f"ticker returning {len(result)} items")
-    return result
+    brackets = [
+        (1,  7,  6), (7,  15, 6), (15, 25, 6), (25, 50, 6), (50, 999, 4),
+    ]
+    seen: set = set()
+    result: list = []
+    for lo, hi, picks in brackets:
+        bucket = [x for x in drop_items if lo <= abs(x["drop_pct"]) < hi]
+        _rnd.shuffle(bucket)
+        for x in bucket[:picks]:
+            seen.add(id(x))
+            result.append(x)
+    for x in drop_items:
+        if len(result) >= 30: break
+        if id(x) not in seen: result.append(x)
+    _rnd.shuffle(result)
+    return result[:30]
 
 
 class TrackUrlRequest(BaseModel):
