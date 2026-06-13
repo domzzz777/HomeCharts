@@ -61,12 +61,18 @@ async def dashboard():
     )
 
 
+EXCLUDED_COUNTRIES = {"Montenegro", "Portugal", "Cyprus"}
+
+
 # ─── Stats ────────────────────────────────────────────────────────────────────
 
 
 @app.get("/api/stats")
 async def get_stats(db: Session = Depends(get_db)):
-    listings = db.query(Listing).filter(Listing.is_active == True).all()
+    listings = db.query(Listing).filter(
+        Listing.is_active == True,
+        ~Listing.country.in_(EXCLUDED_COUNTRIES),
+    ).all()
     # Only count drops that pass all three validation rules
     validated = [(l, _validate_drop(l)) for l in listings]
     drop_listings = [(l, dp) for l, (dp, susp) in validated if dp < -2 and not susp]
@@ -94,7 +100,10 @@ async def get_stats(db: Session = Depends(get_db)):
 @app.get("/api/markets")
 async def get_markets(db: Session = Depends(get_db)):
     """Per-country stats for the landing page market cards."""
-    listings = db.query(Listing).filter(Listing.is_active == True).all()
+    listings = db.query(Listing).filter(
+        Listing.is_active == True,
+        ~Listing.country.in_(EXCLUDED_COUNTRIES),
+    ).all()
 
     COUNTRY_META = {
         "Georgia": {"flag": "🇬🇪", "subtitle": "Batumi · Black Sea"},
@@ -249,7 +258,10 @@ def _to_dict(l: Listing) -> dict:
 async def get_ticker(db: Session = Depends(get_db)):
     """Return top 30 active price drops for the ticker."""
     import random as _rnd
-    listings = db.query(Listing).filter(Listing.is_active == True).all()
+    listings = db.query(Listing).filter(
+        Listing.is_active == True,
+        ~Listing.country.in_(EXCLUDED_COUNTRIES),
+    ).all()
     drop_items = []
     now = datetime.utcnow()
 
@@ -787,7 +799,10 @@ async def get_listings(
     search: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    query = db.query(Listing).filter(Listing.is_active == True)
+    query = db.query(Listing).filter(
+        Listing.is_active == True,
+        ~Listing.country.in_(EXCLUDED_COUNTRIES),
+    )
     if portal:
         query = query.filter(Listing.portal == portal)
     if city:
