@@ -64,15 +64,16 @@ async def dashboard():
 EXCLUDED_COUNTRIES = {"Montenegro", "Portugal", "Cyprus"}
 
 
+def _not_excluded(listing) -> bool:
+    return (listing.country or "") not in EXCLUDED_COUNTRIES
+
+
 # ─── Stats ────────────────────────────────────────────────────────────────────
 
 
 @app.get("/api/stats")
 async def get_stats(db: Session = Depends(get_db)):
-    listings = db.query(Listing).filter(
-        Listing.is_active == True,
-        Listing.country.notin_(EXCLUDED_COUNTRIES),
-    ).all()
+    listings = [l for l in db.query(Listing).filter(Listing.is_active == True).all() if _not_excluded(l)]
     # Only count drops that pass all three validation rules
     validated = [(l, _validate_drop(l)) for l in listings]
     drop_listings = [(l, dp) for l, (dp, susp) in validated if dp < -2 and not susp]
@@ -100,10 +101,7 @@ async def get_stats(db: Session = Depends(get_db)):
 @app.get("/api/markets")
 async def get_markets(db: Session = Depends(get_db)):
     """Per-country stats for the landing page market cards."""
-    listings = db.query(Listing).filter(
-        Listing.is_active == True,
-        Listing.country.notin_(EXCLUDED_COUNTRIES),
-    ).all()
+    listings = [l for l in db.query(Listing).filter(Listing.is_active == True).all() if _not_excluded(l)]
 
     COUNTRY_META = {
         "Georgia": {"flag": "🇬🇪", "subtitle": "Batumi · Black Sea"},
@@ -258,10 +256,7 @@ def _to_dict(l: Listing) -> dict:
 async def get_ticker(db: Session = Depends(get_db)):
     """Return top 30 active price drops for the ticker."""
     import random as _rnd
-    listings = db.query(Listing).filter(
-        Listing.is_active == True,
-        Listing.country.notin_(EXCLUDED_COUNTRIES),
-    ).all()
+    listings = [l for l in db.query(Listing).filter(Listing.is_active == True).all() if _not_excluded(l)]
     drop_items = []
     now = datetime.utcnow()
 
@@ -799,16 +794,13 @@ async def get_listings(
     search: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
-    query = db.query(Listing).filter(
-        Listing.is_active == True,
-        Listing.country.notin_(EXCLUDED_COUNTRIES),
-    )
+    query = db.query(Listing).filter(Listing.is_active == True)
     if portal:
         query = query.filter(Listing.portal == portal)
     if city:
         query = query.filter(Listing.city == city)
 
-    listings = query.all()
+    listings = [l for l in query.all() if _not_excluded(l)]
     result = [_to_dict(l) for l in listings if l.price_history]
 
     if min_drop > 0:
