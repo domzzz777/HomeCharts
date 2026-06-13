@@ -876,3 +876,40 @@ async def proxy_image(url: str = Query(..., description="Image URL to proxy")):
 async def trigger_scrape(background_tasks: BackgroundTasks):
     background_tasks.add_task(run_scrape_all)
     return {"status": "started", "message": "Scrape job running in background"}
+
+
+class PriceHistoryImport(BaseModel):
+    url: str
+    history: list  # [{price, recorded_at, change_pct}]
+
+@app.post("/api/admin/import-history")
+async def import_price_history(payload: list[PriceHistoryImport], db: Session = Depends(get_db)):
+    """Temporary admin endpoint: import historical price data by listing URL."""
+    from database import PriceHistory
+    from sqlalchemy import text
+    matched = 0
+    inserted = 0
+    for item in payload:
+        listing = db.query(Listing).filter(Listing.url == item.url).first()
+        if not listing:
+            continue
+        matched += 1
+        existing_dates = {ph.recorded_at.date() for ph in listing.price_history}
+        for h in item.history:
+            try:
+                rec_at = datetime.fromisoformat(h["recorded_at"])
+                if rec_at.date() in existing_dates:
+                    continue
+                ph = PriceHistory(
+                    listing_id=listing.id,
+                    price=h["price"],
+                    currency=h.get("currency", listing.currency),
+                    recorded_at=rec_at,
+                    change_pct=h.get("change_pct", 0.0),
+                )
+                db.add(ph)
+                inserted += 1
+            except Exception as e:
+                logger.warning(f"import_history row error: {e}")
+    db.commit()
+    return {"matched": matched, "inserted": inserted}
