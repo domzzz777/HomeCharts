@@ -194,10 +194,6 @@
     .filter-input { width: 100% !important; }
     input[type=range] { width: 80px !important; }
 
-    /* Market pills: horizontal scroll */
-    .pills-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; padding-bottom: 4px; }
-    .pills-scroll::-webkit-scrollbar { height: 2px; }
-
     /* Listings grid: 1 column */
     .listings-grid { grid-template-columns: 1fr !important; }
 
@@ -211,33 +207,16 @@
     .modal-stat-value { font-size: 16px !important; }
     .modal-footer { flex-direction: column !important; }
 
-    /* Header nav: hide text, keep icons */
+    /* Header nav: hide subtitle, keep controls */
     .header-nav-text { display: none !important; }
 
-    /* Mobile: hide desktop-only dropdowns, show city bar */
+    /* Mobile: hide desktop pills row + dropdowns */
+    #header-pills-row { display: none !important; }
     .pill-submenu { display: none !important; }
-    #mobile-city-bar { display: block !important; }
-    #mobile-city-bar[data-hidden="true"] { display: none !important; }
+    #mobile-city-bar { display: none !important; }
 
-    /* Pills row always full width, scroll */
-    #header-pills-row { padding: 8px 12px !important; }
-    .market-pill { font-size: 12px !important; padding: 5px 12px !important; }
-
-    /* Mobile city chip style */
-    .mobile-city-chip {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
-      border: 1px solid #1e293b; color: #64748b; cursor: pointer;
-      background: transparent; white-space: nowrap; transition: all .15s;
-      font-family: inherit;
-    }
-    .mobile-city-chip.active { background: rgba(59,130,246,.15); border-color: #3b82f6; color: #60a5fa; }
-    .mobile-city-chip-close {
-      display: inline-flex; align-items: center;
-      padding: 7px 12px; border-radius: 20px; font-size: 13px;
-      border: 1px solid #334155; color: #475569; cursor: pointer;
-      background: transparent; white-space: nowrap; font-family: inherit;
-    }
+    /* Mobile selector: always show two-column panel */
+    #mobile-selector { display: flex !important; }
 
     /* Card carousel arrows: always visible on touch devices */
     .prop-img-wrap .card-arrow { opacity: 0.55 !important; }
@@ -251,6 +230,36 @@
     .prop-img-wrap .card-arrow { opacity: 0.5 !important; }
     .gallery-nav-btn { opacity: 1 !important; }
   }
+
+  /* ── Mobile selector ───────────────────────────────────────────────────── */
+  .mob-country-btn {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 11px 12px;
+    background: none; border: none; border-bottom: 1px solid #0d1626;
+    color: #94a3b8; font-size: 13px; font-weight: 500;
+    cursor: pointer; text-align: left; font-family: inherit;
+    transition: background .12s, color .12s;
+    white-space: nowrap;
+  }
+  .mob-country-btn.active {
+    background: rgba(59,130,246,.12);
+    color: #60a5fa;
+    border-right: 2px solid #3b82f6;
+  }
+  .mob-city-btn {
+    display: flex; align-items: center; gap: 7px;
+    width: 100%; padding: 9px 10px; margin-bottom: 4px;
+    background: #111827; border: 1px solid #1e293b; border-radius: 10px;
+    color: #94a3b8; font-size: 13px; font-weight: 500;
+    cursor: pointer; text-align: left; font-family: inherit;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  .mob-city-btn.active {
+    background: rgba(59,130,246,.15);
+    border-color: #3b82f6;
+    color: #60a5fa;
+  }
+  .mob-city-btn:active, .mob-country-btn:active { opacity: .7; }
   </style>
 </head>
 <body>
@@ -301,9 +310,17 @@
   </div>
 </header>
 
-<!-- ── MOBILE CITY BAR (shown below header when pill selected on mobile) ───── -->
-<div id="mobile-city-bar" data-hidden="true" style="background:#0a1020;border-bottom:1px solid #1e293b;padding:10px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;">
-  <div id="mobile-city-chips" style="display:inline-flex;gap:8px;align-items:center;"></div>
+<!-- ── MOBILE CITY BAR (legacy, hidden on mobile now) ───────────────────── -->
+<div id="mobile-city-bar" style="display:none;"></div>
+
+<!-- ── MOBILE TWO-COLUMN COUNTRY/CITY SELECTOR ───────────────────────────── -->
+<div id="mobile-selector" style="display:none;background:#0a1020;border-bottom:1px solid #1e293b;">
+  <div style="display:flex;height:auto;">
+    <!-- Left: countries -->
+    <div id="mob-countries" style="width:42%;border-right:1px solid #1e293b;overflow-y:auto;max-height:220px;"></div>
+    <!-- Right: cities -->
+    <div id="mob-cities" style="flex:1;overflow-y:auto;max-height:220px;padding:6px 8px;"></div>
+  </div>
 </div>
 
 <!-- ── STATS ──────────────────────────────────────────────────────────────── -->
@@ -472,29 +489,29 @@ let priceChart       = null;
 let galleryImages    = [];
 let galleryIndex     = 0;
 
-// ─── Build pills row ──────────────────────────────────────────────────────────
+// ─── All pills/countries definition ───────────────────────────────────────────
+const ALL_PILLS = [
+  { country: 'Georgia',    flag: '🇬🇪' },
+  { country: 'Albania',    flag: '🇦🇱' },
+  { country: 'Malta',      flag: '🇲🇹' },
+  { country: 'Greece',     flag: '🇬🇷' },
+  { country: 'Spain',      flag: '🇪🇸' },
+  { country: 'Montenegro', flag: '🇲🇪' },
+  { country: 'Portugal',   flag: '🇵🇹' },
+  { country: 'Cyprus',     flag: '🇨🇾' },
+];
+
+// ─── Build desktop pills row ───────────────────────────────────────────────────
 function buildPillsRow() {
   const row = id('header-pills-row');
   if (!row) return;
-
-  const PILLS = [
-    { country: 'Georgia',     flag: '🇬🇪' },
-    { country: 'Albania',     flag: '🇦🇱' },
-    { country: 'Malta',       flag: '🇲🇹' },
-    { country: 'Greece',      flag: '🇬🇷' },
-    { country: 'Spain',       flag: '🇪🇸' },
-    { country: 'Montenegro',  flag: '🇲🇪', noSub: true },
-    { country: 'Portugal',    flag: '🇵🇹', noSub: true },
-    { country: 'Cyprus',      flag: '🇨🇾', noSub: true },
-  ];
-
-  row.innerHTML = PILLS.map(({ country, flag, noSub }) => {
+  row.innerHTML = ALL_PILLS.map(({ country, flag }) => {
     const cities = PILL_CITIES[country] || [];
-    const hasSub = cities.length > 0 && !noSub;
+    const hasSub = cities.length > 0;
     const arrow  = hasSub ? `<span class="pill-arrow" id="arrow-${country}">▾</span>` : '';
     const submenu = hasSub ? `
       <div class="pill-submenu" id="submenu-${country}">
-        ${cities.map(([e, c]) => `<div class="pill-sub-item" id="subcity-${country}-${c.replace(/'/g,'').replace(/\s+/g,'')}" onclick="setPillCity('${country}','${c.replace(/'/g,"\\'")}')">  ${e} ${c}</div>`).join('')}
+        ${cities.map(([e, c]) => `<div class="pill-sub-item" onclick="setPillCity('${country}','${c.replace(/'/g,"\\'")}')">  ${e} ${c}</div>`).join('')}
       </div>` : '';
     return `
       <div class="pill-group" id="group-${country}">
@@ -506,9 +523,72 @@ function buildPillsRow() {
   }).join('');
 }
 
+// ─── Build mobile two-column selector ─────────────────────────────────────────
+let _mobSelectedCountry = '';
+
+function buildMobileSelector() {
+  const countryCol = id('mob-countries');
+  const cityCol    = id('mob-cities');
+  if (!countryCol || !cityCol) return;
+
+  countryCol.innerHTML = ALL_PILLS.map(({ country, flag }) => `
+    <button class="mob-country-btn${_mobSelectedCountry === country ? ' active' : ''}"
+      onclick="mobSelectCountry('${country}')">
+      ${flag} ${country}
+    </button>`).join('');
+
+  _renderMobCities(cityCol);
+}
+
+function _renderMobCities(cityCol) {
+  cityCol = cityCol || id('mob-cities');
+  const cities = PILL_CITIES[_mobSelectedCountry] || [];
+  if (!_mobSelectedCountry) {
+    cityCol.innerHTML = '<p style="color:#334155;font-size:12px;padding:14px 8px;text-align:center;">← tap a country</p>';
+    return;
+  }
+  if (!cities.length) {
+    cityCol.innerHTML = `<button class="mob-city-btn active" onclick="mobSelectCountry('${_mobSelectedCountry}')">All ${_mobSelectedCountry}</button>`;
+    return;
+  }
+  cityCol.innerHTML =
+    `<button class="mob-city-btn${!activePillCity ? ' active' : ''}"
+       onclick="mobSetCity('')">All cities</button>` +
+    cities.map(([e, c]) =>
+      `<button class="mob-city-btn${activePillCity === c ? ' active' : ''}"
+         onclick="mobSetCity('${c.replace(/'/g,"\\'")}')">
+         ${e} ${c}
+       </button>`
+    ).join('');
+}
+
+function mobSelectCountry(country) {
+  _mobSelectedCountry = country;
+  activePillCity = '';
+  id('country-select').value = country;
+  // Update active state on country buttons
+  document.querySelectorAll('.mob-country-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.textContent.includes(country));
+  });
+  _renderMobCities();
+  applyFilters();
+  updateMarketPills();
+}
+
+function mobSetCity(city) {
+  activePillCity = city;
+  if (city) {
+    id('country-select').value = _mobSelectedCountry;
+  }
+  _renderMobCities();
+  applyFilters();
+  updateMarketPills();
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   buildPillsRow();
+  buildMobileSelector();
   showSkeletons(9);
   loadAll();
   setInterval(loadAll, 60_000);
