@@ -213,6 +213,18 @@
 
     /* Header nav: hide text, keep icons */
     .header-nav-text { display: none !important; }
+
+    /* Card carousel arrows: always visible on touch devices */
+    .prop-img-wrap .card-arrow { opacity: 0.55 !important; }
+
+    /* Gallery nav arrows: always visible */
+    .gallery-nav-btn { opacity: 1 !important; }
+  }
+
+  /* Touch devices: always show arrows subtly */
+  @media (hover: none) {
+    .prop-img-wrap .card-arrow { opacity: 0.5 !important; }
+    .gallery-nav-btn { opacity: 1 !important; }
   }
   </style>
 </head>
@@ -697,6 +709,7 @@ function renderListings(listings) {
     return;
   }
   grid.innerHTML = listings.map(renderCard).join('');
+  requestAnimationFrame(setupCardSwipes);
 }
 
 function proxyImg(url) {
@@ -737,10 +750,11 @@ function renderCard(l) {
     (l.floor && l.total_floors) ? `🏢 ${l.floor}/${l.total_floors}F`        : null,
   ].filter(Boolean).map(s => `<span class="spec-chip">${s}</span>`).join('');
 
+  if (imgs.length > 1) _cardImages[l.id] = imgs;
   return `
     <div class="listing-card" onclick="openModal(${l.id})" role="button" tabindex="0"
          onkeydown="if(event.key==='Enter')openModal(${l.id})" data-idx="${l.id}">
-      <div class="prop-img-wrap">
+      <div class="prop-img-wrap" data-lid="${l.id}">
         ${imgHtml}
         ${hasDrop ? `<span class="${badgeCls}">↓ ${Math.abs(drop).toFixed(1)}%</span>` : ''}
         ${photoCount > 1 ? `<span class="photo-count-badge">📷 ${photoCount}</span>` : ''}
@@ -778,8 +792,34 @@ function renderCard(l) {
     </div>`;
 }
 
+// ─── Touch swipe helper ────────────────────────────────────────────────────────
+function enableSwipe(el, onLeft, onRight) {
+  let startX = null, startY = null, moved = false;
+  el.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    startY = e.touches[0].clientY;
+    moved = false;
+  }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (startX === null) return;
+    const dx = e.touches[0].clientX - startX;
+    const dy = e.touches[0].clientY - startY;
+    if (Math.abs(dx) > Math.abs(dy) + 5) moved = true;
+  }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (startX === null || !moved) { startX = null; return; }
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 40) {
+      dx < 0 ? onLeft() : onRight();
+      e.preventDefault();
+    }
+    startX = null; moved = false;
+  }, { passive: false });
+}
+
 // ─── Card mini-carousel ───────────────────────────────────────────────────────
 const _cardIndices = {};
+const _cardImages  = {};  // cache per listing id
 
 function _setCardImage(listingId, imgs, index) {
   const imgEl  = document.getElementById(`card-img-${listingId}`);
@@ -787,6 +827,7 @@ function _setCardImage(listingId, imgs, index) {
   if (!imgEl) return;
   const i = (index + imgs.length) % imgs.length;
   _cardIndices[listingId] = i;
+  _cardImages[listingId]  = imgs;
   imgEl.src = imgs[i];
   if (dots) {
     dots.querySelectorAll('.card-dot').forEach((d,j) => d.classList.toggle('active', j === i));
@@ -800,6 +841,21 @@ function cardPrev(e, id, imgs) {
 function cardNext(e, id, imgs) {
   e.stopPropagation();
   _setCardImage(id, imgs, (_cardIndices[id] ?? 0) + 1);
+}
+
+function setupCardSwipes() {
+  document.querySelectorAll('.prop-img-wrap[data-lid]').forEach(wrap => {
+    const lid  = parseInt(wrap.dataset.lid);
+    const imgs = _cardImages[lid];
+    if (!imgs || imgs.length < 2) return;
+    if (wrap._swipeEnabled) return;
+    wrap._swipeEnabled = true;
+    enableSwipe(
+      wrap,
+      () => _setCardImage(lid, imgs, (_cardIndices[lid] ?? 0) + 1),
+      () => _setCardImage(lid, imgs, (_cardIndices[lid] ?? 0) - 1)
+    );
+  });
 }
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
@@ -947,6 +1003,15 @@ function renderModalGallery() {
       </div>
       ${galleryImages.length > 1 ? `<div class="gallery-thumbs" id="gallery-thumbs">${thumbs}</div>` : ''}
     </div>`;
+
+  // Enable touch swipe on modal gallery
+  if (galleryImages.length > 1) {
+    const mainEl = id('gallery-main');
+    if (mainEl && !mainEl._swipeEnabled) {
+      mainEl._swipeEnabled = true;
+      enableSwipe(mainEl, () => shiftGallery(1), () => shiftGallery(-1));
+    }
+  }
 }
 
 function setGalleryImage(i) {
