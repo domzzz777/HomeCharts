@@ -71,7 +71,7 @@ EXCLUDED_COUNTRIES = {"Montenegro", "Portugal", "Cyprus"}
 async def get_stats(db: Session = Depends(get_db)):
     listings = db.query(Listing).filter(
         Listing.is_active == True,
-        ~Listing.country.in_(EXCLUDED_COUNTRIES),
+        Listing.country.notin_(EXCLUDED_COUNTRIES),
     ).all()
     # Only count drops that pass all three validation rules
     validated = [(l, _validate_drop(l)) for l in listings]
@@ -102,7 +102,7 @@ async def get_markets(db: Session = Depends(get_db)):
     """Per-country stats for the landing page market cards."""
     listings = db.query(Listing).filter(
         Listing.is_active == True,
-        ~Listing.country.in_(EXCLUDED_COUNTRIES),
+        Listing.country.notin_(EXCLUDED_COUNTRIES),
     ).all()
 
     COUNTRY_META = {
@@ -260,7 +260,7 @@ async def get_ticker(db: Session = Depends(get_db)):
     import random as _rnd
     listings = db.query(Listing).filter(
         Listing.is_active == True,
-        ~Listing.country.in_(EXCLUDED_COUNTRIES),
+        Listing.country.notin_(EXCLUDED_COUNTRIES),
     ).all()
     drop_items = []
     now = datetime.utcnow()
@@ -801,7 +801,7 @@ async def get_listings(
 ):
     query = db.query(Listing).filter(
         Listing.is_active == True,
-        ~Listing.country.in_(EXCLUDED_COUNTRIES),
+        Listing.country.notin_(EXCLUDED_COUNTRIES),
     )
     if portal:
         query = query.filter(Listing.portal == portal)
