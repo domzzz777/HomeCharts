@@ -407,17 +407,34 @@ _EMAIL_HEAD = """<head>
 <meta name="color-scheme" content="dark"/>
 <meta name="supported-color-schemes" content="dark"/>
 <style>
-  body,table,td,div{-webkit-text-size-adjust:100%;mso-table-lspace:0;mso-table-rspace:0;}
+  body,table,td{-webkit-text-size-adjust:100%;mso-table-lspace:0;mso-table-rspace:0;}
   img{border:0;display:block;line-height:0;}
-  body{margin:0;padding:0;}
-  /* aggressive dark override for every client */
-  body,table,td,div,p,a{color:#f1f5f9;}
-  body,.em-bg,.em-card,.em-hdr,.em-sub,.em-foot
-    {background-color:#07101e!important;}
-  /* Gmail app Android override via data-ogsc */
-  [data-ogsc] .em-bg,[data-ogsc] .em-card,[data-ogsc] .em-hdr,
-  [data-ogsc] .em-sub,[data-ogsc] .em-foot
-    {background-color:#07101e!important;}
+  body{margin:0!important;padding:0!important;background-color:#07101e!important;}
+
+  /* ── Gmail Android hack: u+ targets Gmail's injected <u> tag ── */
+  u+.body .gc { background-color:#0c1526!important; }
+  u+.body .gh { background-color:#0a1120!important; }
+  u+.body .gs { background-color:#111e33!important; }
+  u+.body .gi { background-color:#091428!important; }
+  u+.body .gd { background-color:#1a0808!important; }
+  u+.body .gf { background-color:#06090f!important; }
+
+  /* ── [data-ogsc] = Outlook/Gmail dark mode attribute ── */
+  [data-ogsc] .gc { background-color:#0c1526!important; }
+  [data-ogsc] .gh { background-color:#0a1120!important; }
+  [data-ogsc] .gs { background-color:#111e33!important; }
+  [data-ogsc] .gi { background-color:#091428!important; }
+  [data-ogsc] .gd { background-color:#1a0808!important; }
+  [data-ogsc] .gf { background-color:#06090f!important; }
+
+  @media (prefers-color-scheme:dark){
+    .gc{background-color:#0c1526!important;}
+    .gh{background-color:#0a1120!important;}
+    .gs{background-color:#111e33!important;}
+    .gi{background-color:#091428!important;}
+    .gd{background-color:#1a0808!important;}
+    .gf{background-color:#06090f!important;}
+  }
 </style>
 </head>"""
 
@@ -438,17 +455,6 @@ def _td(bg: str, style: str = "") -> str:
     return f'<td bgcolor="{bg}" style="{s}">'
 
 
-def _wrap(content: str, bg: str = _CARD) -> str:
-    """Wrap content in a full-width dark table row — ensures bgcolor propagates."""
-    return (
-        f'<table width="100%" cellpadding="0" cellspacing="0" bgcolor="{bg}" '
-        f'style="background-color:{bg};">'
-        f'<tr><td bgcolor="{bg}" style="background-color:{bg};">'
-        f'{content}'
-        f'</td></tr></table>'
-    )
-
-
 def _welcome_email_html(listing) -> str:
     flag     = {"Georgia":"🇬🇪","Albania":"🇦🇱","Malta":"🇲🇹","Greece":"🇬🇷","Spain":"🇪🇸","Poland":"🇵🇱"}.get(listing.country or "", "🏠")
     price    = _fmt_price(listing)
@@ -467,35 +473,40 @@ def _welcome_email_html(listing) -> str:
 
     return f"""<!DOCTYPE html>
 <html lang="pl">{_EMAIL_HEAD}
-<body bgcolor="{_BG}" style="margin:0;padding:0;background-color:{_BG}!important;{_FONT}">
-<!--[if mso]><table width="100%" bgcolor="{_BG}"><tr><td><![endif]-->
-<div class="em-bg" style="background-color:{_BG}!important;padding:32px 8px;">
-<table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_BG}" style="background-color:{_BG}!important;">
+<body class="body" bgcolor="{_BG}" style="margin:0;padding:0;background-color:{_BG}!important;{_FONT}">
+<table width="100%" cellpadding="0" cellspacing="0" class="gc" bgcolor="{_CARD}"
+       style="background-color:{_BG}!important;">
 <tr>
-<td align="center" bgcolor="{_BG}" style="background-color:{_BG}!important;padding:0;">
+<td class="gc" bgcolor="{_CARD}" align="center"
+    style="background-color:{_BG}!important;padding:32px 8px;">
 
-<!-- ═══ CARD ═══ -->
-<table width="560" cellpadding="0" cellspacing="0" bgcolor="{_CARD}"
-       style="max-width:560px;background-color:{_CARD}!important;border-radius:14px;
-              overflow:hidden;border:1px solid {_BDR};">
+<!-- CARD -->
+<table width="560" cellpadding="0" cellspacing="0" class="gc" bgcolor="{_CARD}"
+       style="max-width:560px;width:100%;background-color:{_CARD}!important;
+              border-radius:14px;overflow:hidden;border:1px solid {_BDR};">
 
-  <!-- accent bar -->
+  <!-- accent -->
   <tr><td bgcolor="#b91c1c" height="4"
           style="background-color:#b91c1c!important;height:4px;line-height:4px;font-size:1px;">&nbsp;</td></tr>
 
-  <!-- header -->
-  <tr><td bgcolor="{_HDR}" style="background-color:{_HDR}!important;padding:20px 28px 18px;
-          border-bottom:1px solid {_BDR};">
-    <table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_HDR}"
+  <!-- header row -->
+  <tr><td class="gh" bgcolor="{_HDR}"
+      style="background-color:{_HDR}!important;padding:20px 28px;border-bottom:1px solid {_BDR};">
+    <table width="100%" cellpadding="0" cellspacing="0" class="gh" bgcolor="{_HDR}"
            style="background-color:{_HDR}!important;">
       <tr>
-        <td bgcolor="{_HDR}" style="background-color:{_HDR}!important;
-            {_FONT}font-size:20px;font-weight:900;color:#f1f5f9;">
+        <td class="gh" bgcolor="{_HDR}"
+            style="background-color:{_HDR}!important;{_FONT}font-size:20px;
+                   font-weight:900;color:#f1f5f9;vertical-align:middle;">
           Home<span style="color:#ef4444;">Charts</span>
         </td>
-        <td align="right" bgcolor="{_HDR}" style="background-color:{_HDR}!important;">
+        <td width="20" class="gh" bgcolor="{_HDR}"
+            style="background-color:{_HDR}!important;"></td>
+        <td align="right" class="gh" bgcolor="{_HDR}" style="background-color:{_HDR}!important;
+            white-space:nowrap;vertical-align:middle;">
           <span style="{_FONT}font-size:10px;font-weight:700;color:#22c55e;
-                       border:1px solid #22c55e;border-radius:20px;padding:4px 10px;">
+                       border:1px solid #22c55e;border-radius:20px;
+                       padding:5px 12px;white-space:nowrap;">
             TRACKING ACTIVE
           </span>
         </td>
@@ -504,77 +515,81 @@ def _welcome_email_html(listing) -> str:
   </td></tr>
 
   <!-- photo -->
-  {"<tr><td bgcolor='" + _CARD + "' style='background-color:" + _CARD + "!important;padding:0;line-height:0;'>" + img_html + "</td></tr>" if img_html else ""}
+  {"<tr><td class='gc' bgcolor='" + _CARD + "' style='background-color:" + _CARD + "!important;padding:0;line-height:0;'>" + img_html + "</td></tr>" if img_html else ""}
 
   <!-- headline -->
-  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;
-      padding:28px 28px 6px;{_FONT}font-size:22px;font-weight:800;color:#f1f5f9;line-height:1.3;">
+  <tr><td class="gc" bgcolor="{_CARD}"
+      style="background-color:{_CARD}!important;padding:28px 28px 6px;
+             {_FONT}font-size:22px;font-weight:800;color:#f1f5f9;line-height:1.3;">
     ✅ Zacząłeś śledzić nieruchomość
   </td></tr>
 
-  <!-- subline -->
-  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;
-      padding:0 28px 24px;{_FONT}font-size:14px;color:#5b7a9d;line-height:1.7;">
+  <!-- subtext -->
+  <tr><td class="gc" bgcolor="{_CARD}"
+      style="background-color:{_CARD}!important;padding:0 28px 22px;
+             {_FONT}font-size:14px;color:#5b7a9d;line-height:1.7;">
     HomeCharts będzie monitorować tę nieruchomość i wyśle Ci email przy każdym spadku ceny.
   </td></tr>
 
   <!-- property box -->
-  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;padding:0 28px;">
-    <table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_SUB}"
+  <tr><td class="gc" bgcolor="{_CARD}"
+      style="background-color:{_CARD}!important;padding:0 28px;">
+    <table width="100%" cellpadding="0" cellspacing="0" class="gs" bgcolor="{_SUB}"
            style="background-color:{_SUB}!important;border:1px solid {_BDR};border-radius:10px;">
-      <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;padding:18px 20px 16px;">
-        <table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_SUB}"
+      <tr><td class="gs" bgcolor="{_SUB}"
+          style="background-color:{_SUB}!important;padding:18px 20px 16px;">
+        <table width="100%" cellpadding="0" cellspacing="0" class="gs" bgcolor="{_SUB}"
                style="background-color:{_SUB}!important;">
-          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;
-              {_FONT}font-size:10px;font-weight:700;color:#3d5a7a;text-transform:uppercase;
-              letter-spacing:.12em;padding-bottom:8px;">Śledzona nieruchomość</td></tr>
-          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;
-              {_FONT}font-size:15px;font-weight:700;color:#dde8f8;line-height:1.4;
-              padding-bottom:8px;">{listing.title or 'Nieruchomość'}</td></tr>
-          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;
-              {_FONT}font-size:12px;color:#3d5a7a;padding-bottom:14px;">{detail}</td></tr>
+          <tr><td class="gs" bgcolor="{_SUB}"
+              style="background-color:{_SUB}!important;{_FONT}font-size:10px;font-weight:700;
+                     color:#3d5a7a;text-transform:uppercase;letter-spacing:.12em;
+                     padding-bottom:8px;">ŚLEDZONA NIERUCHOMOŚĆ</td></tr>
+          <tr><td class="gs" bgcolor="{_SUB}"
+              style="background-color:{_SUB}!important;{_FONT}font-size:15px;font-weight:700;
+                     color:#dde8f8;line-height:1.4;padding-bottom:8px;">
+                     {listing.title or 'Nieruchomość'}</td></tr>
+          <tr><td class="gs" bgcolor="{_SUB}"
+              style="background-color:{_SUB}!important;{_FONT}font-size:12px;
+                     color:#3d5a7a;padding-bottom:14px;">{detail}</td></tr>
           <tr><td bgcolor="{_BDR}" height="1"
               style="background-color:{_BDR}!important;height:1px;line-height:1px;font-size:1px;">&nbsp;</td></tr>
-          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;height:12px;">&nbsp;</td></tr>
-          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;
-              {_FONT}font-size:10px;color:#2a3f5a;text-transform:uppercase;
-              letter-spacing:.12em;font-weight:700;padding-bottom:4px;">Cena w momencie dodania</td></tr>
-          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;
-              {_FONT}font-size:28px;font-weight:900;color:#f1f5f9;letter-spacing:-.02em;">{price}</td></tr>
+          <tr><td class="gs" bgcolor="{_SUB}"
+              style="background-color:{_SUB}!important;height:12px;">&nbsp;</td></tr>
+          <tr><td class="gs" bgcolor="{_SUB}"
+              style="background-color:{_SUB}!important;{_FONT}font-size:10px;color:#2a3f5a;
+                     text-transform:uppercase;letter-spacing:.12em;font-weight:700;
+                     padding-bottom:4px;">CENA W MOMENCIE DODANIA</td></tr>
+          <tr><td class="gs" bgcolor="{_SUB}"
+              style="background-color:{_SUB}!important;{_FONT}font-size:28px;font-weight:900;
+                     color:#f1f5f9;letter-spacing:-.02em;">{price}</td></tr>
         </table>
       </td></tr>
     </table>
   </td></tr>
 
-  <!-- spacer -->
-  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;height:18px;">&nbsp;</td></tr>
+  <tr><td class="gc" bgcolor="{_CARD}"
+      style="background-color:{_CARD}!important;height:16px;">&nbsp;</td></tr>
 
-  <!-- info box -->
-  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;padding:0 28px;">
-    <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#091428"
+  <!-- info -->
+  <tr><td class="gc" bgcolor="{_CARD}"
+      style="background-color:{_CARD}!important;padding:0 28px;">
+    <table width="100%" cellpadding="0" cellspacing="0" class="gi" bgcolor="#091428"
            style="background-color:#091428!important;border:1px solid #1a3a6e;border-radius:10px;">
-      <tr><td bgcolor="#091428" style="background-color:#091428!important;padding:16px 18px;">
-        <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#091428"
-               style="background-color:#091428!important;">
-          <tr><td bgcolor="#091428" style="background-color:#091428!important;
-              {_FONT}font-size:13px;font-weight:700;color:#60a5fa;padding-bottom:6px;">
-            📡 Jak działa śledzenie?
-          </td></tr>
-          <tr><td bgcolor="#091428" style="background-color:#091428!important;
-              {_FONT}font-size:13px;color:#4a7aad;line-height:1.7;">
-            HomeCharts sprawdza cenę dwa razy dziennie (06:00 i 13:00 UTC).
-            Gdy wykryjemy spadek — natychmiast dostaniesz email.
-          </td></tr>
-        </table>
+      <tr><td class="gi" bgcolor="#091428"
+          style="background-color:#091428!important;padding:16px 18px;
+                 {_FONT}font-size:13px;color:#4a7aad;line-height:1.7;">
+        <strong style="color:#60a5fa;display:block;padding-bottom:6px;">📡 Jak działa śledzenie?</strong>
+        HomeCharts sprawdza cenę dwa razy dziennie (06:00 i 13:00 UTC).
+        Gdy wykryjemy spadek — natychmiast dostaniesz email.
       </td></tr>
     </table>
   </td></tr>
 
-  <!-- spacer -->
-  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;height:24px;">&nbsp;</td></tr>
+  <tr><td class="gc" bgcolor="{_CARD}"
+      style="background-color:{_CARD}!important;height:24px;">&nbsp;</td></tr>
 
   <!-- CTA -->
-  <tr><td bgcolor="{_CARD}" align="center"
+  <tr><td class="gc" bgcolor="{_CARD}" align="center"
       style="background-color:{_CARD}!important;padding:0 28px 28px;">
     <a href="{listing.url}" target="_blank"
        style="{_FONT}display:inline-block;background-color:#2563eb;color:#ffffff;
@@ -585,22 +600,16 @@ def _welcome_email_html(listing) -> str:
   </td></tr>
 
   <!-- footer -->
-  <tr><td bgcolor="#060c18" style="background-color:#060c18!important;
-      padding:16px 28px;border-top:1px solid {_BDR};
-      {_FONT}font-size:11px;color:#2d4060;text-align:center;line-height:1.8;">
+  <tr><td class="gf" bgcolor="#06090f"
+      style="background-color:#06090f!important;padding:16px 28px;border-top:1px solid {_BDR};
+             {_FONT}font-size:11px;color:#2d4060;text-align:center;line-height:1.8;">
     Otrzymujesz ten email, bo dodałeś nieruchomość do śledzenia na HomeCharts.<br/>
     <a href="https://home-charts.com" style="color:#3a5c9a;text-decoration:none;">home-charts.com</a>
     &nbsp;·&nbsp; &copy; 2026 HomeCharts
   </td></tr>
 
 </table>
-<!-- ═══ END CARD ═══ -->
-
-</td>
-</tr>
-</table>
-</div>
-<!--[if mso]></td></tr></table><![endif]-->
+</td></tr></table>
 </body></html>"""
 
 
