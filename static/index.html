@@ -214,10 +214,14 @@
     /* Header nav: hide text, keep icons */
     .header-nav-text { display: none !important; }
 
-    /* Mobile city bar: always show, hide desktop dropdowns */
+    /* Mobile: hide desktop-only dropdowns, show city bar */
     .pill-submenu { display: none !important; }
     #mobile-city-bar { display: block !important; }
     #mobile-city-bar[data-hidden="true"] { display: none !important; }
+
+    /* Pills row always full width, scroll */
+    #header-pills-row { padding: 8px 12px !important; }
+    .market-pill { font-size: 12px !important; padding: 5px 12px !important; }
 
     /* Mobile city chip style */
     .mobile-city-chip {
@@ -260,83 +264,21 @@
 
 <!-- ── HEADER ──────────────────────────────────────────────────────────────── -->
 <header class="header">
-  <div style="max-width:1400px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
-    <a href="/" style="display:flex;align-items:center;gap:0;text-decoration:none;">
-      <img src="/static/logo.png" alt="HomeCharts logo" style="width:112px;height:112px;object-fit:contain;mix-blend-mode:screen;flex-shrink:0;transform:translateX(16px);">
-      <div style="display:flex;flex-direction:column;justify-content:center;">
-        <div style="font-size:22px;font-weight:900;color:#f1f5f9;letter-spacing:-.03em;font-family:'Inter',system-ui,sans-serif;line-height:1.1;">Home<span style="color:#ef4444;">Charts</span></div>
-        <div style="font-size:11px;color:#475569;margin-top:2px;font-family:'Inter',system-ui,sans-serif;">Real estate price drop tracker</div>
+  <!-- Row 1: logo + right controls -->
+  <div style="max-width:1400px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <a href="/" style="display:flex;align-items:center;gap:0;text-decoration:none;flex-shrink:0;">
+      <img src="/static/logo.png" alt="HomeCharts logo" style="width:52px;height:52px;object-fit:contain;mix-blend-mode:screen;flex-shrink:0;">
+      <div style="display:flex;flex-direction:column;justify-content:center;margin-left:4px;">
+        <div style="font-size:18px;font-weight:900;color:#f1f5f9;letter-spacing:-.03em;font-family:'Inter',system-ui,sans-serif;line-height:1.1;">Home<span style="color:#ef4444;">Charts</span></div>
+        <div class="header-nav-text" style="font-size:10px;color:#475569;margin-top:1px;font-family:'Inter',system-ui,sans-serif;">Real estate price drop tracker</div>
       </div>
     </a>
-    <div class="pills-scroll" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-      <!-- Georgia — expandable -->
-      <div class="pill-group" id="group-Georgia">
-        <div class="market-pill" id="pill-Georgia" onclick="togglePillGroup('Georgia')">
-          <span style="font-size:15px;">🇬🇪</span> Georgia <span class="pill-arrow" id="arrow-Georgia">▾</span>
-        </div>
-        <div class="pill-submenu" id="submenu-Georgia">
-          <div class="pill-sub-item" id="subcity-Georgia-Batumi" onclick="setPillCity('Georgia','Batumi')">🏖 Batumi</div>
-        </div>
-      </div>
-      <!-- Albania — expandable -->
-      <div class="pill-group" id="group-Albania">
-        <div class="market-pill" id="pill-Albania" onclick="togglePillGroup('Albania')">
-          <span style="font-size:15px;">🇦🇱</span> Albania <span class="pill-arrow" id="arrow-Albania">▾</span>
-        </div>
-        <div class="pill-submenu" id="submenu-Albania">
-          <div class="pill-sub-item" id="subcity-Albania-Tirana" onclick="setPillCity('Albania','Tirana')">🏙 Tirana</div>
-          <div class="pill-sub-item" id="subcity-Albania-Durres" onclick="setPillCity('Albania','Durres')">🏖 Durrës</div>
-        </div>
-      </div>
-      <!-- Malta — expandable -->
-      <div class="pill-group" id="group-Malta">
-        <div class="market-pill" id="pill-Malta" onclick="togglePillGroup('Malta')">
-          <span style="font-size:15px;">🇲🇹</span> Malta <span class="pill-arrow" id="arrow-Malta">▾</span>
-        </div>
-        <div class="pill-submenu" id="submenu-Malta">
-          <div class="pill-sub-item" id="subcity-Malta-Gozo" onclick="setPillCity('Malta','Gozo')">🏝 Gozo</div>
-          <div class="pill-sub-item" id="subcity-Malta-Valletta" onclick="setPillCity('Malta','Valletta')">🏛 Valletta</div>
-          <div class="pill-sub-item" id="subcity-Malta-Sliema" onclick="setPillCity('Malta','Sliema')">🌊 Sliema</div>
-          <div class="pill-sub-item" id="subcity-Malta-StJulians" onclick="setPillCity('Malta','StJulians')">🎰 St Julian's</div>
-        </div>
-      </div>
-      <!-- Spain — expandable -->
-      <div class="pill-group" id="group-Spain">
-        <div class="market-pill" id="pill-Spain" onclick="togglePillGroup('Spain')">
-          <span style="font-size:15px;">🇪🇸</span> Spain <span class="pill-arrow" id="arrow-Spain">▾</span>
-        </div>
-        <div class="pill-submenu" id="submenu-Spain">
-          <div class="pill-sub-item" id="subcity-Spain-Costa del Sol" onclick="setPillCity('Spain','Costa del Sol')">☀️ Costa del Sol</div>
-          <div class="pill-sub-item" id="subcity-Spain-Costa Blanca" onclick="setPillCity('Spain','Costa Blanca')">🏖 Costa Blanca</div>
-          <div class="pill-sub-item" id="subcity-Spain-Barcelona" onclick="setPillCity('Spain','Barcelona')">🏙 Barcelona</div>
-          <div class="pill-sub-item" id="subcity-Spain-Tenerife" onclick="setPillCity('Spain','Tenerife')">🌋 Tenerife</div>
-          <div class="pill-sub-item" id="subcity-Spain-Mallorca" onclick="setPillCity('Spain','Mallorca')">⛵ Mallorca</div>
-          <div class="pill-sub-item" id="subcity-Spain-Madrid" onclick="setPillCity('Spain','Madrid')">🏛 Madrid</div>
-        </div>
-      </div>
-      <!-- Greece — expandable -->
-      <div class="pill-group" id="group-Greece">
-        <div class="market-pill" id="pill-Greece" onclick="togglePillGroup('Greece')">
-          <span style="font-size:15px;">🇬🇷</span> Greece <span class="pill-arrow" id="arrow-Greece">▾</span>
-        </div>
-        <div class="pill-submenu" id="submenu-Greece">
-          <div class="pill-sub-item" id="subcity-Greece-Athens" onclick="setPillCity('Greece','Athens')">🏛 Athens</div>
-          <div class="pill-sub-item" id="subcity-Greece-Crete" onclick="setPillCity('Greece','Crete')">🏝 Crete</div>
-          <div class="pill-sub-item" id="subcity-Greece-Santorini" onclick="setPillCity('Greece','Santorini')">🌋 Santorini</div>
-          <div class="pill-sub-item" id="subcity-Greece-Mykonos" onclick="setPillCity('Greece','Mykonos')">⛵ Mykonos</div>
-          <div class="pill-sub-item" id="subcity-Greece-Paros" onclick="setPillCity('Greece','Paros')">🏝 Paros</div>
-          <div class="pill-sub-item" id="subcity-Greece-Corfu" onclick="setPillCity('Greece','Corfu')">🫒 Corfu</div>
-          <div class="pill-sub-item" id="subcity-Greece-Halkidiki" onclick="setPillCity('Greece','Halkidiki')">🌲 Halkidiki</div>
-          <div class="pill-sub-item" id="subcity-Greece-Peloponnese" onclick="setPillCity('Greece','Peloponnese')">🏛 Peloponnese</div>
-        </div>
-      </div>
-    </div>
-    <div style="display:flex;align-items:center;gap:12px;">
-      <span style="font-size:12px;color:#475569;display:flex;align-items:center;gap:6px;">
+    <!-- Pills are rendered in #header-pills-row below by buildPillsRow() -->
+    <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+      <span class="header-nav-text" style="font-size:12px;color:#475569;display:flex;align-items:center;gap:6px;">
         <span class="live-dot"></span>
         <span id="last-updated-text">Loading…</span>
       </span>
-
       <!-- Language switcher -->
       <div style="position:relative;display:inline-block;" id="dash-lang-switcher">
         <button onclick="toggleDashLangMenu()" style="display:flex;align-items:center;gap:5px;background:#0d1626;border:1px solid #334155;color:#94a3b8;font-size:12px;font-weight:500;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:inherit;transition:border-color .15s;">
@@ -350,8 +292,12 @@
           <button onclick="dashSetLang('es')" style="width:100%;display:flex;align-items:center;gap:8px;padding:10px 14px;background:none;border:none;color:#e2e8f0;font-size:12px;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='#1e293b'" onmouseout="this.style.background='none'">🇪🇸 Español</button>
         </div>
       </div>
-
     </div>
+  </div>
+
+  <!-- Row 2: pills — dedicated full-width scrollable row (mobile + desktop) -->
+  <div style="border-top:1px solid #1e293b;">
+    <div id="header-pills-row" class="pills-scroll" style="max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;gap:8px;align-items:center;overflow-x:auto;-webkit-overflow-scrolling:touch;flex-wrap:nowrap;"></div>
   </div>
 </header>
 
@@ -526,8 +472,43 @@ let priceChart       = null;
 let galleryImages    = [];
 let galleryIndex     = 0;
 
+// ─── Build pills row ──────────────────────────────────────────────────────────
+function buildPillsRow() {
+  const row = id('header-pills-row');
+  if (!row) return;
+
+  const PILLS = [
+    { country: 'Georgia',     flag: '🇬🇪' },
+    { country: 'Albania',     flag: '🇦🇱' },
+    { country: 'Malta',       flag: '🇲🇹' },
+    { country: 'Greece',      flag: '🇬🇷' },
+    { country: 'Spain',       flag: '🇪🇸' },
+    { country: 'Montenegro',  flag: '🇲🇪', noSub: true },
+    { country: 'Portugal',    flag: '🇵🇹', noSub: true },
+    { country: 'Cyprus',      flag: '🇨🇾', noSub: true },
+  ];
+
+  row.innerHTML = PILLS.map(({ country, flag, noSub }) => {
+    const cities = PILL_CITIES[country] || [];
+    const hasSub = cities.length > 0 && !noSub;
+    const arrow  = hasSub ? `<span class="pill-arrow" id="arrow-${country}">▾</span>` : '';
+    const submenu = hasSub ? `
+      <div class="pill-submenu" id="submenu-${country}">
+        ${cities.map(([e, c]) => `<div class="pill-sub-item" id="subcity-${country}-${c.replace(/'/g,'').replace(/\s+/g,'')}" onclick="setPillCity('${country}','${c.replace(/'/g,"\\'")}')">  ${e} ${c}</div>`).join('')}
+      </div>` : '';
+    return `
+      <div class="pill-group" id="group-${country}">
+        <div class="market-pill" id="pill-${country}" onclick="togglePillGroup('${country}')">
+          <span style="font-size:15px;">${flag}</span> ${country} ${arrow}
+        </div>
+        ${submenu}
+      </div>`;
+  }).join('');
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  buildPillsRow();
   showSkeletons(9);
   loadAll();
   setInterval(loadAll, 60_000);
@@ -1135,7 +1116,7 @@ const PILL_CITIES = {
   Spain:    [['☀️','Costa del Sol'],['🏖','Costa Blanca'],['🏙','Barcelona'],['🌋','Tenerife'],['⛵','Mallorca'],['🏛','Madrid']],
   Greece:   [['🏛','Athens'],['🏝','Crete'],['🌋','Santorini'],['⛵','Mykonos'],['🏝','Paros'],['🫒','Corfu'],['🌲','Halkidiki'],['🏛','Peloponnese']],
 };
-const ALL_COUNTRIES = ['Georgia','Albania','Malta','Greece','Spain'];
+const ALL_COUNTRIES = ['Georgia','Albania','Malta','Greece','Spain','Montenegro','Portugal','Cyprus'];
 
 function _isMobile() { return window.innerWidth <= 640; }
 
