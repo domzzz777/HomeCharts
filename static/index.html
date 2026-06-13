@@ -180,6 +180,40 @@
   .ticker-item:hover { color: #f1f5f9; }
   .ticker-drop { color: #f87171; font-weight: 700; }
   .ticker-sep { color: #334155; }
+
+  /* ── Mobile responsive ─────────────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    /* Stat cards: 2×2 grid */
+    .stats-grid-mobile { grid-template-columns: repeat(2, 1fr) !important; }
+    .stat-card { padding: 12px 14px; }
+    .stat-number { font-size: 22px; }
+    .stat-label { font-size: 10px; }
+
+    /* Filters: stack vertically */
+    .filter-bar-mobile { flex-direction: column !important; gap: 8px !important; }
+    .filter-input { width: 100% !important; }
+    input[type=range] { width: 80px !important; }
+
+    /* Market pills: horizontal scroll */
+    .pills-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; flex-wrap: nowrap !important; padding-bottom: 4px; }
+    .pills-scroll::-webkit-scrollbar { height: 2px; }
+
+    /* Listings grid: 1 column */
+    .listings-grid { grid-template-columns: 1fr !important; }
+
+    /* Modal */
+    .modal-overlay { padding: 8px !important; align-items: flex-end !important; }
+    .modal-box { border-radius: 18px 18px 0 0 !important; max-height: 96vh; }
+    .gallery-main { height: 220px !important; }
+    .modal-body { padding: 14px 16px !important; }
+    .modal-header { padding: 14px 16px !important; }
+    .modal-stats-row { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+    .modal-stat-value { font-size: 16px !important; }
+    .modal-footer { flex-direction: column !important; }
+
+    /* Header nav: hide text, keep icons */
+    .header-nav-text { display: none !important; }
+  }
   </style>
 </head>
 <body>
@@ -201,7 +235,7 @@
         <div style="font-size:11px;color:#475569;margin-top:2px;font-family:'Inter',system-ui,sans-serif;">Real estate price drop tracker</div>
       </div>
     </a>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <div class="pills-scroll" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <!-- Georgia — expandable -->
       <div class="pill-group" id="group-Georgia">
         <div class="market-pill" id="pill-Georgia" onclick="togglePillGroup('Georgia')">
@@ -290,7 +324,7 @@
 
 <!-- ── STATS ──────────────────────────────────────────────────────────────── -->
 <section style="max-width:1400px;margin:24px auto 0;padding:0 24px;">
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;">
+  <div class="stats-grid-mobile" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;">
     <div class="stat-card"><div class="stat-number" id="stat-total">—</div><div class="stat-label" data-i18n="stat_tracked">Listings Tracked</div></div>
     <div class="stat-card"><div class="stat-number" style="color:#f87171;" id="stat-drops">—</div><div class="stat-label" data-i18n="stat_drops">Active Price Drops</div></div>
     <div class="stat-card"><div class="stat-number" style="color:#ef4444;" id="stat-biggest">—</div><div class="stat-label" data-i18n="stat_biggest">Biggest Drop</div></div>
@@ -300,7 +334,7 @@
 
 <!-- ── FILTERS ────────────────────────────────────────────────────────────── -->
 <section style="max-width:1400px;margin:20px auto 0;padding:0 24px;">
-  <div style="background:#0d1626;border:1px solid #1e293b;border-radius:12px;padding:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+  <div class="filter-bar-mobile" style="background:#0d1626;border:1px solid #1e293b;border-radius:12px;padding:16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
     <input class="filter-input" type="text" id="search-input" data-i18n-placeholder="search_placeholder" placeholder="🔍  Search by title or area…" style="flex:1;min-width:220px;" oninput="applyFilters()" />
     <select class="filter-input" id="sort-select" onchange="applyFilters()">
       <option value="drop" data-i18n="sort_drop">Sort: Biggest Drop</option>
