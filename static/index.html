@@ -214,6 +214,27 @@
     /* Header nav: hide text, keep icons */
     .header-nav-text { display: none !important; }
 
+    /* Mobile city bar: always show, hide desktop dropdowns */
+    .pill-submenu { display: none !important; }
+    #mobile-city-bar { display: block !important; }
+    #mobile-city-bar[data-hidden="true"] { display: none !important; }
+
+    /* Mobile city chip style */
+    .mobile-city-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+      border: 1px solid #1e293b; color: #64748b; cursor: pointer;
+      background: transparent; white-space: nowrap; transition: all .15s;
+      font-family: inherit;
+    }
+    .mobile-city-chip.active { background: rgba(59,130,246,.15); border-color: #3b82f6; color: #60a5fa; }
+    .mobile-city-chip-close {
+      display: inline-flex; align-items: center;
+      padding: 7px 12px; border-radius: 20px; font-size: 13px;
+      border: 1px solid #334155; color: #475569; cursor: pointer;
+      background: transparent; white-space: nowrap; font-family: inherit;
+    }
+
     /* Card carousel arrows: always visible on touch devices */
     .prop-img-wrap .card-arrow { opacity: 0.55 !important; }
 
@@ -333,6 +354,11 @@
     </div>
   </div>
 </header>
+
+<!-- ── MOBILE CITY BAR (shown below header when pill selected on mobile) ───── -->
+<div id="mobile-city-bar" data-hidden="true" style="background:#0a1020;border-bottom:1px solid #1e293b;padding:10px 16px;overflow-x:auto;-webkit-overflow-scrolling:touch;white-space:nowrap;">
+  <div id="mobile-city-chips" style="display:inline-flex;gap:8px;align-items:center;"></div>
+</div>
 
 <!-- ── STATS ──────────────────────────────────────────────────────────────── -->
 <section style="max-width:1400px;margin:24px auto 0;padding:0 24px;">
@@ -1101,8 +1127,20 @@ function countryFlag(country) { return COUNTRY_FLAGS[country] || '🌍'; }
 // Active city sub-filter set by pill submenu ('' = no city filter)
 let activePillCity = '';
 
+// City options per country
+const PILL_CITIES = {
+  Georgia:  [['🏖','Batumi']],
+  Albania:  [['🏙','Tirana'],['🏖','Durrës']],
+  Malta:    [['🏝','Gozo'],['🏛','Valletta'],['🌊','Sliema'],['🎰','St Julian\'s']],
+  Spain:    [['☀️','Costa del Sol'],['🏖','Costa Blanca'],['🏙','Barcelona'],['🌋','Tenerife'],['⛵','Mallorca'],['🏛','Madrid']],
+  Greece:   [['🏛','Athens'],['🏝','Crete'],['🌋','Santorini'],['⛵','Mykonos'],['🏝','Paros'],['🫒','Corfu'],['🌲','Halkidiki'],['🏛','Peloponnese']],
+};
+const ALL_COUNTRIES = ['Georgia','Albania','Malta','Greece','Spain'];
+
+function _isMobile() { return window.innerWidth <= 640; }
+
 function _closePillMenus(except) {
-  ['Georgia','Albania','Malta','Greece','Spain'].forEach(c => {
+  ALL_COUNTRIES.forEach(c => {
     if (c === except) return;
     const sm = id(`submenu-${c}`);
     const ar = id(`arrow-${c}`);
@@ -1111,25 +1149,62 @@ function _closePillMenus(except) {
   });
 }
 
+function _hideMobileCityBar() {
+  const bar = id('mobile-city-bar');
+  if (bar) bar.setAttribute('data-hidden', 'true');
+}
+
+function _showMobileCityBar(country) {
+  const bar   = id('mobile-city-bar');
+  const chips = id('mobile-city-chips');
+  if (!bar || !chips) return;
+  const cities = PILL_CITIES[country] || [];
+  if (!cities.length) { _hideMobileCityBar(); return; }
+
+  chips.innerHTML =
+    `<button class="mobile-city-chip-close" onclick="_hideMobileCityBar();id('country-select').value='';activePillCity='';applyFilters();updateMarketPills();">✕ ${country}</button>` +
+    cities.map(([emoji, city]) =>
+      `<button class="mobile-city-chip${activePillCity===city?' active':''}"
+        onclick="setPillCity('${country}','${city.replace(/'/g,"\\'")}')">${emoji} ${city}</button>`
+    ).join('');
+  bar.removeAttribute('data-hidden');
+}
+
 function togglePillGroup(country) {
   const submenu = id(`submenu-${country}`);
   const arrow   = id(`arrow-${country}`);
-  if (!submenu) { setMarketFilter(country); return; }
-  const isOpen  = submenu.classList.contains('open');
+  const cities  = PILL_CITIES[country] || [];
 
+  if (_isMobile()) {
+    // Mobile: use the city bar below header
+    const sel     = id('country-select');
+    const wasOpen = sel.value === country && !id('mobile-city-bar').getAttribute('data-hidden');
+    activePillCity = '';
+    if (wasOpen) {
+      sel.value = '';
+      _hideMobileCityBar();
+    } else {
+      sel.value = country;
+      if (cities.length) _showMobileCityBar(country);
+      else _hideMobileCityBar();
+    }
+    applyFilters();
+    updateMarketPills();
+    return;
+  }
+
+  // Desktop: standard dropdown
+  if (!submenu || !cities.length) { setMarketFilter(country); return; }
+  const isOpen = submenu.classList.contains('open');
   _closePillMenus(country);
   activePillCity = '';
-
   if (isOpen) {
-    // Collapse — also deselect country if it was selected
     submenu.classList.remove('open');
-    arrow.classList.remove('open');
-    if (id('country-select').value === country) {
-      id('country-select').value = '';
-    }
+    if (arrow) arrow.classList.remove('open');
+    if (id('country-select').value === country) id('country-select').value = '';
   } else {
     submenu.classList.add('open');
-    arrow.classList.add('open');
+    if (arrow) arrow.classList.add('open');
     id('country-select').value = country;
   }
   applyFilters();
@@ -1137,7 +1212,6 @@ function togglePillGroup(country) {
 }
 
 function setPillCity(country, city) {
-  // If already active city — clicking again deselects city (keep country)
   if (id('country-select').value === country && activePillCity === city) {
     activePillCity = '';
   } else {
@@ -1146,51 +1220,45 @@ function setPillCity(country, city) {
   }
   applyFilters();
   updateMarketPills();
+  if (_isMobile()) _showMobileCityBar(country);
 }
 
 function setMarketFilter(country) {
-  // Used by Malta / Greece pills (no submenu)
   _closePillMenus(null);
   activePillCity = '';
+  _hideMobileCityBar();
   const sel = id('country-select');
   sel.value = sel.value === country ? '' : country;
   applyFilters();
   updateMarketPills();
 }
 
-// Close pill submenus when clicking outside
+// Close pill submenus when clicking outside (desktop)
 document.addEventListener('click', e => {
-  if (!e.target.closest('.pill-group')) {
+  if (!e.target.closest('.pill-group') && !e.target.closest('#mobile-city-bar')) {
     _closePillMenus(null);
-    ['Georgia','Albania','Malta','Greece','Spain'].forEach(c => {
-      const ar = id(`arrow-${c}`);
-      if (ar) ar.classList.remove('open');
-    });
+    ALL_COUNTRIES.forEach(c => { const ar = id(`arrow-${c}`); if (ar) ar.classList.remove('open'); });
   }
 });
 
 function updateMarketPills() {
   const active = id('country-select').value;
-  ['Georgia', 'Albania', 'Malta', 'Greece', 'Spain'].forEach(c => {
+  ALL_COUNTRIES.forEach(c => {
     const pill = id(`pill-${c}`);
-    if (!pill) return;
-    pill.classList.toggle('active', active === c);
+    if (pill) pill.classList.toggle('active', active === c);
   });
-  // Sub-item active states
-  [
-    ['Georgia','Batumi'],
-    ['Albania','Tirana'],['Albania','Durres'],
-    ['Malta','Gozo'],['Malta','Valletta'],['Malta','Sliema'],['Malta','StJulians'],
-    ['Spain','Costa del Sol'],['Spain','Costa Blanca'],['Spain','Barcelona'],
-    ['Spain','Tenerife'],['Spain','Mallorca'],['Spain','Madrid'],
-    ['Greece','Athens'],['Greece','Crete'],['Greece','Santorini'],
-    ['Greece','Mykonos'],['Greece','Paros'],['Greece','Corfu'],
-    ['Greece','Halkidiki'],['Greece','Peloponnese'],
-  ].forEach(([c, city]) => {
-    const el = id(`subcity-${c}-${city}`);
-    if (!el) return;
-    el.classList.toggle('active', active === c && activePillCity === city);
+  // Desktop sub-item active states
+  ALL_COUNTRIES.forEach(c => {
+    (PILL_CITIES[c] || []).forEach(([, city]) => {
+      const key = city.replace(/'/g,'').replace(/\s+/g,'');
+      const el  = id(`subcity-${c}-${key}`) || id(`subcity-${c}-${city}`);
+      if (el) el.classList.toggle('active', active === c && activePillCity === city);
+    });
   });
+  // Mobile city bar: refresh chips if visible
+  if (_isMobile() && active && !id('mobile-city-bar').getAttribute('data-hidden')) {
+    _showMobileCityBar(active);
+  }
 }
 
 const USD_TO_EUR = 0.92;
