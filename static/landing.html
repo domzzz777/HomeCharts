@@ -101,11 +101,14 @@
     .market-listings-count { display:inline-flex; align-items:center; gap:5px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); color:#94a3b8; font-size:11px; font-weight:600; padding:3px 9px; border-radius:10px; }
 
     /* Country gradient fallbacks */
-    .grad-georgia { background:linear-gradient(150deg,#0e1f35 0%,#162d48 50%,#1a3a5c 100%); }
-    .grad-albania  { background:linear-gradient(150deg,#1a0a0a 0%,#2d1010 50%,#3d1515 100%); }
-    .grad-malta    { background:linear-gradient(150deg,#1a1200 0%,#2e1e00 50%,#3d2b00 100%); }
-    .grad-greece   { background:linear-gradient(150deg,#071425 0%,#0e2040 50%,#153060 100%); }
-    .grad-spain    { background:linear-gradient(150deg,#1a0800 0%,#2d1200 50%,#3d1f00 100%); }
+    .grad-georgia    { background:linear-gradient(150deg,#0e1f35 0%,#162d48 50%,#1a3a5c 100%); }
+    .grad-albania    { background:linear-gradient(150deg,#1a0a0a 0%,#2d1010 50%,#3d1515 100%); }
+    .grad-malta      { background:linear-gradient(150deg,#1a1200 0%,#2e1e00 50%,#3d2b00 100%); }
+    .grad-greece     { background:linear-gradient(150deg,#071425 0%,#0e2040 50%,#153060 100%); }
+    .grad-spain      { background:linear-gradient(150deg,#1a0800 0%,#2d1200 50%,#3d1f00 100%); }
+    .grad-montenegro { background:linear-gradient(150deg,#0a1a10 0%,#102a18 50%,#163520 100%); }
+    .grad-portugal   { background:linear-gradient(150deg,#1a0508 0%,#2d0c10 50%,#3d1218 100%); }
+    .grad-cyprus     { background:linear-gradient(150deg,#1a1005 0%,#2d1c08 50%,#3d280a 100%); }
 
     /* ── Recent drops ────────────────────────────────────────────────────── */
     .drops-list { display:flex; flex-direction:column; gap:14px; margin-top:44px; }
@@ -362,13 +365,19 @@
 
 <script>
 // ── Helpers ────────────────────────────────────────────────────────────────
-const COUNTRY_FLAGS = { Georgia:'🇬🇪', Albania:'🇦🇱', Malta:'🇲🇹', Greece:'🇬🇷', Spain:'🇪🇸' };
+const COUNTRY_FLAGS = {
+  Georgia:'🇬🇪', Albania:'🇦🇱', Malta:'🇲🇹', Greece:'🇬🇷', Spain:'🇪🇸',
+  Montenegro:'🇲🇪', Portugal:'🇵🇹', Cyprus:'🇨🇾'
+};
 const COUNTRY_GRADS = {
-  Georgia: 'grad-georgia',
-  Albania: 'grad-albania',
-  Malta:   'grad-malta',
-  Greece:  'grad-greece',
-  Spain:   'grad-spain',
+  Georgia:    'grad-georgia',
+  Albania:    'grad-albania',
+  Malta:      'grad-malta',
+  Greece:     'grad-greece',
+  Spain:      'grad-spain',
+  Montenegro: 'grad-montenegro',
+  Portugal:   'grad-portugal',
+  Cyprus:     'grad-cyprus',
 };
 
 // Country card photos — all URLs verified 200 OK

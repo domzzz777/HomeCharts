@@ -317,6 +317,10 @@
         <option value="Malta">🇲🇹 Malta</option>
         <option value="Greece">🇬🇷 Greece</option>
         <option value="Spain">🇪🇸 Spain</option>
+        <option value="Montenegro">🇲🇪 Montenegro</option>
+        <option value="Portugal">🇵🇹 Portugal</option>
+        <option value="Cyprus">🇨🇾 Cyprus</option>
+        <option value="Spain">🇪🇸 Spain</option>
       </optgroup>
     </select>
     <select class="filter-input" id="portal-select" onchange="applyFilters()">
@@ -498,7 +502,7 @@ async function loadAll() {
 }
 
 // ─── Ticker ───────────────────────────────────────────────────────────────────
-const COUNTRY_FLAG_MAP = { Georgia:'🇬🇪', Albania:'🇦🇱', Malta:'🇲🇹', Greece:'🇬🇷', Spain:'🇪🇸' };
+const COUNTRY_FLAG_MAP = { Georgia:'🇬🇪', Albania:'🇦🇱', Malta:'🇲🇹', Greece:'🇬🇷', Spain:'🇪🇸', Montenegro:'🇲🇪', Portugal:'🇵🇹', Cyprus:'🇨🇾' };
 
 async function loadTicker() {
   try {
@@ -992,7 +996,7 @@ function showError() {
 function id(x)  { return document.getElementById(x); }
 function set(x, v) { const el = id(x); if (el) el.textContent = v; }
 
-const COUNTRY_FLAGS = { Georgia: '🇬🇪', Malta: '🇲🇹', Albania: '🇦🇱', Greece: '🇬🇷', Spain: '🇪🇸' };
+const COUNTRY_FLAGS = { Georgia:'🇬🇪', Malta:'🇲🇹', Albania:'🇦🇱', Greece:'🇬🇷', Spain:'🇪🇸', Montenegro:'🇲🇪', Portugal:'🇵🇹', Cyprus:'🇨🇾' };
 function countryFlag(country) { return COUNTRY_FLAGS[country] || '🌍'; }
 
 // Active city sub-filter set by pill submenu ('' = no city filter)

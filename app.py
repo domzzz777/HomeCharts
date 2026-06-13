@@ -151,7 +151,7 @@ async def get_markets(db: Session = Depends(get_db)):
 # ─── Drop validation ──────────────────────────────────────────────────────────
 
 # Thresholds — adjust here without touching anything else.
-MIN_TRACKING_DAYS    = 7    # listing must be tracked this many days before a drop is shown
+MIN_TRACKING_DAYS    = 0    # show drops immediately once a price change is detected
 MAX_SINGLE_DROP_PCT  = 25.0 # a single scan-to-scan drop cannot exceed this %
 MAX_TOTAL_DROP_PCT   = 50.0 # total peak-to-current drop cannot exceed this %
                             # (rule 3 — assumed 50% since the spec was cut off)
@@ -305,26 +305,28 @@ async def get_ticker(db: Session = Depends(get_db)):
         return result[:30]
 
     # ── No drops yet: show a varied sample of recent listings ──────────────
-    recent = sorted(
-        [l for l in listings if l.price and l.price > 0],
-        key=lambda l: l.first_seen_at or now,
-        reverse=True,
-    )[:200]
+    with_price = [l for l in listings if l.price and l.price > 0]
+    logger.info(f"ticker fallback: {len(listings)} listings, {len(with_price)} with price, {len(drop_items)} drops")
+    recent = sorted(with_price, key=lambda l: l.first_seen_at or now, reverse=True)[:200]
     _rnd.shuffle(recent)
     result = []
     for l in recent[:30]:
-        ts = l.first_seen_at or now
-        price_str = f"${int(l.price):,}" if l.currency in (None, "USD") else f"€{int(l.price):,}" if l.currency == "EUR" else f"{int(l.price):,} {l.currency}"
-        result.append({
-            "label":    _make_label(l),
-            "drop_pct": None,
-            "price":    price_str,
-            "currency": l.currency,
-            "ago":      _ago(ts),
-            "country":  l.country or "",
-            "url":      l.url or "#",
-            "kind":     "new",
-        })
+        try:
+            ts = l.first_seen_at or now
+            price_str = f"${int(l.price):,}" if l.currency in (None, "USD") else f"€{int(l.price):,}" if l.currency == "EUR" else f"{int(l.price):,} {l.currency}"
+            result.append({
+                "label":    _make_label(l),
+                "drop_pct": None,
+                "price":    price_str,
+                "currency": l.currency,
+                "ago":      _ago(ts),
+                "country":  l.country or "",
+                "url":      l.url or "#",
+                "kind":     "new",
+            })
+        except Exception as exc:
+            logger.warning(f"ticker item error for listing {l.id}: {exc}")
+    logger.info(f"ticker returning {len(result)} items")
     return result
 
 
