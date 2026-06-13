@@ -394,70 +394,59 @@ def _listing_thumb(listing) -> str:
     return ""
 
 
-# ── Shared email CSS reset + dark-mode forcing ────────────────────────────────
-_BG   = "#07101e"   # outer background
-_CARD = "#0d1829"   # card background
-_HDR  = "#0b1425"   # header strip
-_SUB  = "#111e33"   # sub-card background
-_BDR  = "#1c2d4a"   # border colour
+# ── Email colour palette ──────────────────────────────────────────────────────
+_BG   = "#07101e"
+_CARD = "#0c1526"
+_HDR  = "#0a1120"
+_SUB  = "#111e33"
+_BDR  = "#1c2d4a"
 
 _EMAIL_HEAD = """<head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<meta name="color-scheme" content="dark only"/>
-<meta name="supported-color-schemes" content="dark only"/>
+<meta name="color-scheme" content="dark"/>
+<meta name="supported-color-schemes" content="dark"/>
 <style>
-  body,table,td{-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;
-    mso-table-lspace:0pt;mso-table-rspace:0pt;}
-  img{-ms-interpolation-mode:bicubic;border:0;display:block;}
-  /* Force dark on every client that reads styles */
-  body,#outer,#card,#hdr,#body-td,#footer-td,
-  .sub,.infobox{background-color:#07101e!important;color:#f1f5f9!important;}
-  .card-bg{background-color:#0d1829!important;}
-  .hdr-bg{background-color:#0b1425!important;}
-  .sub-bg{background-color:#111e33!important;}
-  /* Gmail dark-mode forced override */
-  [data-ogsc] body,[data-ogsc] #outer,[data-ogsc] #card{background-color:#07101e!important;}
+  body,table,td,div{-webkit-text-size-adjust:100%;mso-table-lspace:0;mso-table-rspace:0;}
+  img{border:0;display:block;line-height:0;}
+  body{margin:0;padding:0;}
+  /* aggressive dark override for every client */
+  body,table,td,div,p,a{color:#f1f5f9;}
+  body,.em-bg,.em-card,.em-hdr,.em-sub,.em-foot
+    {background-color:#07101e!important;}
+  /* Gmail app Android override via data-ogsc */
+  [data-ogsc] .em-bg,[data-ogsc] .em-card,[data-ogsc] .em-hdr,
+  [data-ogsc] .em-sub,[data-ogsc] .em-foot
+    {background-color:#07101e!important;}
 </style>
 </head>"""
 
 _FONT = "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;"
 
-# Shared logo header
-def _header_bar(badge_text: str, badge_color: str = "#ef4444") -> str:
-    return f"""<tr>
-  <td id="hdr" class="hdr-bg" bgcolor="{_HDR}"
-      style="padding:22px 32px 20px;background-color:{_HDR};border-bottom:2px solid {_BDR};">
-    <table width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td bgcolor="{_HDR}" style="background-color:{_HDR};
-               {_FONT}font-size:21px;font-weight:900;letter-spacing:-.02em;color:#f1f5f9;">
-          Home<span style="color:#ef4444;">Charts</span>
-        </td>
-        <td align="right" bgcolor="{_HDR}" style="background-color:{_HDR};">
-          <span style="{_FONT}font-size:10px;font-weight:700;color:{badge_color};
-                       text-transform:uppercase;letter-spacing:.12em;
-                       border:1px solid {badge_color};border-radius:20px;padding:5px 12px;">
-            {badge_text}
-          </span>
-        </td>
-      </tr>
-    </table>
-  </td>
-</tr>"""
 
-# Shared footer
-def _email_footer(note: str) -> str:
-    return f"""<tr>
-  <td id="footer-td" bgcolor="#060c18"
-      style="padding:20px 32px;background-color:#060c18;border-top:2px solid {_BDR};
-             {_FONT}font-size:11px;color:#3a526e;text-align:center;line-height:1.9;">
-    {note}<br/>
-    <a href="https://home-charts.com"
-       style="color:#3b6eb8;text-decoration:none;">home-charts.com</a>
-    &nbsp;&middot;&nbsp; &copy; 2026 HomeCharts
-  </td>
-</tr>"""
+def _tb(bg: str, style: str = "", **kw) -> str:
+    """Return opening <table> tag with bgcolor + inline style."""
+    w   = kw.get("width", "100%")
+    pad = kw.get("pad", "0")
+    sp  = kw.get("sp", "0")
+    s   = f"background-color:{bg};{style}"
+    return f'<table width="{w}" cellpadding="{pad}" cellspacing="{sp}" bgcolor="{bg}" style="{s}">'
+
+
+def _td(bg: str, style: str = "") -> str:
+    s = f"background-color:{bg};{style}"
+    return f'<td bgcolor="{bg}" style="{s}">'
+
+
+def _wrap(content: str, bg: str = _CARD) -> str:
+    """Wrap content in a full-width dark table row — ensures bgcolor propagates."""
+    return (
+        f'<table width="100%" cellpadding="0" cellspacing="0" bgcolor="{bg}" '
+        f'style="background-color:{bg};">'
+        f'<tr><td bgcolor="{bg}" style="background-color:{bg};">'
+        f'{content}'
+        f'</td></tr></table>'
+    )
 
 
 def _welcome_email_html(listing) -> str:
@@ -469,127 +458,149 @@ def _welcome_email_html(listing) -> str:
         f"{listing.rooms} {'room' if listing.rooms == 1 else 'rooms'}" if listing.rooms else None,
         f"{listing.area_sqm} m²" if listing.area_sqm else None,
     ]))
-    specs = " · ".join(specs_parts)
-    detail = f"{flag}&nbsp; {location}{(' &nbsp;·&nbsp; ' + specs) if specs else ''}" if location else ""
+    detail = f"{flag}&nbsp; {location}" + (f" &nbsp;·&nbsp; {' · '.join(specs_parts)}" if specs_parts else "")
 
-    img_row = f"""<tr><td bgcolor="{_CARD}" style="padding:0;line-height:0;background-color:{_CARD};">
-  <img src="{thumb}" width="580" alt="Property"
-       style="width:100%;max-width:580px;height:200px;object-fit:cover;display:block;" />
-</td></tr>""" if thumb else ""
+    img_html = (
+        f'<img src="{thumb}" width="560" alt="" '
+        f'style="width:100%;max-width:560px;height:190px;object-fit:cover;display:block;"/>'
+    ) if thumb else ""
 
     return f"""<!DOCTYPE html>
 <html lang="pl">{_EMAIL_HEAD}
-<body bgcolor="{_BG}" style="margin:0;padding:0;background-color:{_BG};{_FONT}">
-<table id="outer" width="100%" cellpadding="0" cellspacing="0" bgcolor="{_BG}"
-       style="background-color:{_BG};">
+<body bgcolor="{_BG}" style="margin:0;padding:0;background-color:{_BG}!important;{_FONT}">
+<!--[if mso]><table width="100%" bgcolor="{_BG}"><tr><td><![endif]-->
+<div class="em-bg" style="background-color:{_BG}!important;padding:32px 8px;">
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_BG}" style="background-color:{_BG}!important;">
 <tr>
-  <td bgcolor="{_BG}" style="background-color:{_BG};padding:40px 16px;" align="center">
+<td align="center" bgcolor="{_BG}" style="background-color:{_BG}!important;padding:0;">
 
-    <table id="card" width="580" cellpadding="0" cellspacing="0" bgcolor="{_CARD}"
-           style="max-width:580px;width:100%;background-color:{_CARD};
-                  border-radius:16px;overflow:hidden;border:2px solid {_BDR};">
+<!-- ═══ CARD ═══ -->
+<table width="560" cellpadding="0" cellspacing="0" bgcolor="{_CARD}"
+       style="max-width:560px;background-color:{_CARD}!important;border-radius:14px;
+              overflow:hidden;border:1px solid {_BDR};">
 
-      <!-- accent bar -->
-      <tr><td bgcolor="#c0392b" height="4"
-              style="background-color:#c0392b;height:4px;font-size:0;line-height:0;">&nbsp;</td></tr>
+  <!-- accent bar -->
+  <tr><td bgcolor="#b91c1c" height="4"
+          style="background-color:#b91c1c!important;height:4px;line-height:4px;font-size:1px;">&nbsp;</td></tr>
 
-      {_header_bar("Tracking Active", "#22c55e")}
-      {img_row}
-
-      <!-- body -->
+  <!-- header -->
+  <tr><td bgcolor="{_HDR}" style="background-color:{_HDR}!important;padding:20px 28px 18px;
+          border-bottom:1px solid {_BDR};">
+    <table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_HDR}"
+           style="background-color:{_HDR}!important;">
       <tr>
-        <td id="body-td" bgcolor="{_CARD}"
-            style="background-color:{_CARD};padding:32px 28px 8px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
-
-            <tr><td bgcolor="{_CARD}" style="background-color:{_CARD};
-                {_FONT}font-size:23px;font-weight:800;color:#f1f5f9;
-                line-height:1.25;padding-bottom:10px;">
-              ✅ Zacząłeś śledzić nieruchomość
-            </td></tr>
-
-            <tr><td bgcolor="{_CARD}" style="background-color:{_CARD};
-                {_FONT}font-size:14px;color:#5b7a9d;line-height:1.7;padding-bottom:28px;">
-              HomeCharts będzie monitorować tę nieruchomość i wyśle Ci email przy każdym spadku ceny.
-            </td></tr>
-
-            <!-- property card -->
-            <tr>
-              <td bgcolor="{_SUB}" style="background-color:{_SUB};border:1px solid {_BDR};
-                  border-radius:12px;padding:20px 22px 18px;">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr><td bgcolor="{_SUB}" style="background-color:{_SUB};
-                      {_FONT}font-size:11px;font-weight:700;color:#4a6080;
-                      text-transform:uppercase;letter-spacing:.12em;padding-bottom:8px;">
-                    Śledzona nieruchomość
-                  </td></tr>
-                  <tr><td bgcolor="{_SUB}" style="background-color:{_SUB};
-                      {_FONT}font-size:16px;font-weight:700;color:#dde8f8;
-                      line-height:1.4;padding-bottom:10px;">
-                    {listing.title or 'Nieruchomość'}
-                  </td></tr>
-                  {"<tr><td bgcolor='" + _SUB + "' style='background-color:" + _SUB + ";" + _FONT + "font-size:12px;color:#4a6080;padding-bottom:14px;'>" + detail + "</td></tr>" if detail else ""}
-                  <tr><td bgcolor="{_BDR}" height="1"
-                      style="background-color:{_BDR};height:1px;font-size:0;line-height:0;">&nbsp;</td></tr>
-                  <tr><td bgcolor="{_SUB}" style="background-color:{_SUB};height:14px;">&nbsp;</td></tr>
-                  <tr><td bgcolor="{_SUB}" style="background-color:{_SUB};
-                      {_FONT}font-size:11px;color:#2d4060;text-transform:uppercase;
-                      letter-spacing:.12em;font-weight:700;padding-bottom:5px;">
-                    Cena w momencie dodania
-                  </td></tr>
-                  <tr><td bgcolor="{_SUB}" style="background-color:{_SUB};
-                      {_FONT}font-size:30px;font-weight:900;color:#f1f5f9;letter-spacing:-.02em;">
-                    {price}
-                  </td></tr>
-                </table>
-              </td>
-            </tr>
-
-            <tr><td bgcolor="{_CARD}" style="background-color:{_CARD};height:20px;">&nbsp;</td></tr>
-
-            <!-- how it works -->
-            <tr>
-              <td bgcolor="#091428" style="background-color:#091428;border:1px solid #1a3a6e;
-                  border-radius:12px;padding:18px 20px;">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr><td bgcolor="#091428" style="background-color:#091428;
-                      {_FONT}font-size:13px;font-weight:700;color:#60a5fa;padding-bottom:8px;">
-                    📡 Jak działa śledzenie?
-                  </td></tr>
-                  <tr><td bgcolor="#091428" style="background-color:#091428;
-                      {_FONT}font-size:13px;color:#4a7aad;line-height:1.7;">
-                    HomeCharts sprawdza cenę dwa razy dziennie (06:00 i 13:00 UTC).
-                    Gdy wykryjemy spadek — natychmiast dostaniesz email z szczegółami.
-                  </td></tr>
-                </table>
-              </td>
-            </tr>
-
-            <tr><td bgcolor="{_CARD}" style="background-color:{_CARD};height:28px;">&nbsp;</td></tr>
-
-            <!-- CTA -->
-            <tr>
-              <td bgcolor="{_CARD}" align="center"
-                  style="background-color:{_CARD};padding-bottom:32px;">
-                <a href="{listing.url}" target="_blank"
-                   style="{_FONT}display:inline-block;background-color:#2563eb;color:#ffffff;
-                          text-decoration:none;font-weight:700;font-size:15px;
-                          padding:15px 44px;border-radius:10px;letter-spacing:.02em;">
-                  Otwórz ogłoszenie &rarr;
-                </a>
-              </td>
-            </tr>
-
-          </table>
+        <td bgcolor="{_HDR}" style="background-color:{_HDR}!important;
+            {_FONT}font-size:20px;font-weight:900;color:#f1f5f9;">
+          Home<span style="color:#ef4444;">Charts</span>
+        </td>
+        <td align="right" bgcolor="{_HDR}" style="background-color:{_HDR}!important;">
+          <span style="{_FONT}font-size:10px;font-weight:700;color:#22c55e;
+                       border:1px solid #22c55e;border-radius:20px;padding:4px 10px;">
+            TRACKING ACTIVE
+          </span>
         </td>
       </tr>
-
-      {_email_footer("Otrzymujesz ten email, bo dodałeś nieruchomość do śledzenia na HomeCharts.")}
-
     </table>
-  </td>
+  </td></tr>
+
+  <!-- photo -->
+  {"<tr><td bgcolor='" + _CARD + "' style='background-color:" + _CARD + "!important;padding:0;line-height:0;'>" + img_html + "</td></tr>" if img_html else ""}
+
+  <!-- headline -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;
+      padding:28px 28px 6px;{_FONT}font-size:22px;font-weight:800;color:#f1f5f9;line-height:1.3;">
+    ✅ Zacząłeś śledzić nieruchomość
+  </td></tr>
+
+  <!-- subline -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;
+      padding:0 28px 24px;{_FONT}font-size:14px;color:#5b7a9d;line-height:1.7;">
+    HomeCharts będzie monitorować tę nieruchomość i wyśle Ci email przy każdym spadku ceny.
+  </td></tr>
+
+  <!-- property box -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;padding:0 28px;">
+    <table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_SUB}"
+           style="background-color:{_SUB}!important;border:1px solid {_BDR};border-radius:10px;">
+      <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;padding:18px 20px 16px;">
+        <table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_SUB}"
+               style="background-color:{_SUB}!important;">
+          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;
+              {_FONT}font-size:10px;font-weight:700;color:#3d5a7a;text-transform:uppercase;
+              letter-spacing:.12em;padding-bottom:8px;">Śledzona nieruchomość</td></tr>
+          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;
+              {_FONT}font-size:15px;font-weight:700;color:#dde8f8;line-height:1.4;
+              padding-bottom:8px;">{listing.title or 'Nieruchomość'}</td></tr>
+          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;
+              {_FONT}font-size:12px;color:#3d5a7a;padding-bottom:14px;">{detail}</td></tr>
+          <tr><td bgcolor="{_BDR}" height="1"
+              style="background-color:{_BDR}!important;height:1px;line-height:1px;font-size:1px;">&nbsp;</td></tr>
+          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;height:12px;">&nbsp;</td></tr>
+          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;
+              {_FONT}font-size:10px;color:#2a3f5a;text-transform:uppercase;
+              letter-spacing:.12em;font-weight:700;padding-bottom:4px;">Cena w momencie dodania</td></tr>
+          <tr><td bgcolor="{_SUB}" style="background-color:{_SUB}!important;
+              {_FONT}font-size:28px;font-weight:900;color:#f1f5f9;letter-spacing:-.02em;">{price}</td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- spacer -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;height:18px;">&nbsp;</td></tr>
+
+  <!-- info box -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;padding:0 28px;">
+    <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#091428"
+           style="background-color:#091428!important;border:1px solid #1a3a6e;border-radius:10px;">
+      <tr><td bgcolor="#091428" style="background-color:#091428!important;padding:16px 18px;">
+        <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#091428"
+               style="background-color:#091428!important;">
+          <tr><td bgcolor="#091428" style="background-color:#091428!important;
+              {_FONT}font-size:13px;font-weight:700;color:#60a5fa;padding-bottom:6px;">
+            📡 Jak działa śledzenie?
+          </td></tr>
+          <tr><td bgcolor="#091428" style="background-color:#091428!important;
+              {_FONT}font-size:13px;color:#4a7aad;line-height:1.7;">
+            HomeCharts sprawdza cenę dwa razy dziennie (06:00 i 13:00 UTC).
+            Gdy wykryjemy spadek — natychmiast dostaniesz email.
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- spacer -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;height:24px;">&nbsp;</td></tr>
+
+  <!-- CTA -->
+  <tr><td bgcolor="{_CARD}" align="center"
+      style="background-color:{_CARD}!important;padding:0 28px 28px;">
+    <a href="{listing.url}" target="_blank"
+       style="{_FONT}display:inline-block;background-color:#2563eb;color:#ffffff;
+              text-decoration:none;font-weight:700;font-size:15px;
+              padding:14px 42px;border-radius:10px;letter-spacing:.02em;">
+      Otwórz ogłoszenie &rarr;
+    </a>
+  </td></tr>
+
+  <!-- footer -->
+  <tr><td bgcolor="#060c18" style="background-color:#060c18!important;
+      padding:16px 28px;border-top:1px solid {_BDR};
+      {_FONT}font-size:11px;color:#2d4060;text-align:center;line-height:1.8;">
+    Otrzymujesz ten email, bo dodałeś nieruchomość do śledzenia na HomeCharts.<br/>
+    <a href="https://home-charts.com" style="color:#3a5c9a;text-decoration:none;">home-charts.com</a>
+    &nbsp;·&nbsp; &copy; 2026 HomeCharts
+  </td></tr>
+
+</table>
+<!-- ═══ END CARD ═══ -->
+
+</td>
 </tr>
 </table>
+</div>
+<!--[if mso]></td></tr></table><![endif]-->
 </body></html>"""
 
 
@@ -603,151 +614,182 @@ def _alert_email_html(listing, old_price: float, new_price: float, drop_pct: flo
     location = ", ".join(filter(None, [listing.city, listing.country]))
     savings  = fmt(abs(old_price - new_price))
 
-    img_row = f"""<tr><td bgcolor="{_CARD}" style="padding:0;line-height:0;background-color:{_CARD};">
-  <img src="{thumb}" width="580" alt="Property"
-       style="width:100%;max-width:580px;height:200px;object-fit:cover;display:block;" />
-</td></tr>""" if thumb else ""
+    img_html = (
+        f'<img src="{thumb}" width="560" alt="" '
+        f'style="width:100%;max-width:560px;height:190px;object-fit:cover;display:block;"/>'
+    ) if thumb else ""
 
     return f"""<!DOCTYPE html>
 <html lang="pl">{_EMAIL_HEAD}
-<body bgcolor="{_BG}" style="margin:0;padding:0;background-color:{_BG};{_FONT}">
-<table id="outer" width="100%" cellpadding="0" cellspacing="0" bgcolor="{_BG}"
-       style="background-color:{_BG};">
+<body bgcolor="{_BG}" style="margin:0;padding:0;background-color:{_BG}!important;{_FONT}">
+<!--[if mso]><table width="100%" bgcolor="{_BG}"><tr><td><![endif]-->
+<div class="em-bg" style="background-color:{_BG}!important;padding:32px 8px;">
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_BG}" style="background-color:{_BG}!important;">
 <tr>
-  <td bgcolor="{_BG}" style="background-color:{_BG};padding:40px 16px;" align="center">
+<td align="center" bgcolor="{_BG}" style="background-color:{_BG}!important;padding:0;">
 
-    <table id="card" width="580" cellpadding="0" cellspacing="0" bgcolor="{_CARD}"
-           style="max-width:580px;width:100%;background-color:{_CARD};
-                  border-radius:16px;overflow:hidden;border:2px solid {_BDR};">
+<!-- ═══ CARD ═══ -->
+<table width="560" cellpadding="0" cellspacing="0" bgcolor="{_CARD}"
+       style="max-width:560px;background-color:{_CARD}!important;border-radius:14px;
+              overflow:hidden;border:1px solid {_BDR};">
 
-      <!-- red accent bar -->
-      <tr><td bgcolor="#b91c1c" height="4"
-              style="background-color:#b91c1c;height:4px;font-size:0;line-height:0;">&nbsp;</td></tr>
+  <!-- red accent -->
+  <tr><td bgcolor="#991b1b" height="4"
+          style="background-color:#991b1b!important;height:4px;line-height:4px;font-size:1px;">&nbsp;</td></tr>
 
-      {_header_bar("Price Drop Alert", "#ef4444")}
-      {img_row}
-
-      <!-- body -->
+  <!-- header -->
+  <tr><td bgcolor="{_HDR}" style="background-color:{_HDR}!important;padding:20px 28px 18px;
+          border-bottom:1px solid {_BDR};">
+    <table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_HDR}"
+           style="background-color:{_HDR}!important;">
       <tr>
-        <td id="body-td" bgcolor="{_CARD}"
-            style="background-color:{_CARD};padding:32px 28px 8px;">
-          <table width="100%" cellpadding="0" cellspacing="0">
+        <td bgcolor="{_HDR}" style="background-color:{_HDR}!important;
+            {_FONT}font-size:20px;font-weight:900;color:#f1f5f9;">
+          Home<span style="color:#ef4444;">Charts</span>
+        </td>
+        <td align="right" bgcolor="{_HDR}" style="background-color:{_HDR}!important;">
+          <span style="{_FONT}font-size:10px;font-weight:700;color:#ef4444;
+                       border:1px solid #ef4444;border-radius:20px;padding:4px 10px;">
+            PRICE DROP
+          </span>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
 
-            <tr><td bgcolor="{_CARD}" style="background-color:{_CARD};
-                {_FONT}font-size:12px;font-weight:700;color:#ef4444;
-                text-transform:uppercase;letter-spacing:.14em;padding-bottom:10px;">
-              📉 &nbsp;Wykryto spadek ceny
-            </td></tr>
+  <!-- photo -->
+  {"<tr><td bgcolor='" + _CARD + "' style='background-color:" + _CARD + "!important;padding:0;line-height:0;'>" + img_html + "</td></tr>" if img_html else ""}
 
-            <tr><td bgcolor="{_CARD}" style="background-color:{_CARD};
-                {_FONT}font-size:21px;font-weight:800;color:#f1f5f9;
-                line-height:1.25;padding-bottom:6px;">
-              {flag} {listing.title or 'Nieruchomość'}
-            </td></tr>
+  <!-- label -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;
+      padding:28px 28px 4px;{_FONT}font-size:11px;font-weight:700;
+      color:#ef4444;text-transform:uppercase;letter-spacing:.14em;">
+    📉 &nbsp;Wykryto spadek ceny
+  </td></tr>
 
-            <tr><td bgcolor="{_CARD}" style="background-color:{_CARD};
-                {_FONT}font-size:13px;color:#4a6080;padding-bottom:28px;">
-              {location}
-            </td></tr>
+  <!-- title -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;
+      padding:6px 28px 4px;{_FONT}font-size:20px;font-weight:800;
+      color:#f1f5f9;line-height:1.3;">
+    {flag} {listing.title or 'Nieruchomość'}
+  </td></tr>
 
-            <!-- price comparison -->
-            <tr>
-              <td bgcolor="{_CARD}" style="background-color:{_CARD};padding-bottom:20px;">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <!-- bylo -->
-                    <td width="31%" bgcolor="{_SUB}" style="background-color:{_SUB};
-                        border:1px solid {_BDR};border-radius:10px;
-                        padding:16px 10px;text-align:center;vertical-align:middle;">
-                      <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr><td bgcolor="{_SUB}" align="center" style="background-color:{_SUB};
-                            {_FONT}font-size:9px;color:#2d4060;text-transform:uppercase;
-                            letter-spacing:.12em;font-weight:700;padding-bottom:8px;">Było</td></tr>
-                        <tr><td bgcolor="{_SUB}" align="center" style="background-color:{_SUB};
-                            {_FONT}font-size:16px;font-weight:700;color:#4a6080;
-                            text-decoration:line-through;">{fmt(old_price)}</td></tr>
-                      </table>
-                    </td>
-                    <!-- arrow -->
-                    <td width="6%" bgcolor="{_CARD}" align="center"
-                        style="background-color:{_CARD};
-                               {_FONT}font-size:18px;color:#ef4444;font-weight:900;">→</td>
-                    <!-- teraz -->
-                    <td width="31%" bgcolor="{_SUB}" style="background-color:{_SUB};
-                        border:1px solid {_BDR};border-radius:10px;
-                        padding:16px 10px;text-align:center;vertical-align:middle;">
-                      <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr><td bgcolor="{_SUB}" align="center" style="background-color:{_SUB};
-                            {_FONT}font-size:9px;color:#2d4060;text-transform:uppercase;
-                            letter-spacing:.12em;font-weight:700;padding-bottom:8px;">Teraz</td></tr>
-                        <tr><td bgcolor="{_SUB}" align="center" style="background-color:{_SUB};
-                            {_FONT}font-size:16px;font-weight:700;color:#dde8f8;">{fmt(new_price)}</td></tr>
-                      </table>
-                    </td>
-                    <td width="4%" bgcolor="{_CARD}" style="background-color:{_CARD};">&nbsp;</td>
-                    <!-- drop -->
-                    <td width="28%" bgcolor="#1a0808" style="background-color:#1a0808;
-                        border:1px solid #7f1d1d;border-radius:10px;
-                        padding:16px 8px;text-align:center;vertical-align:middle;">
-                      <table width="100%" cellpadding="0" cellspacing="0">
-                        <tr><td bgcolor="#1a0808" align="center" style="background-color:#1a0808;
-                            {_FONT}font-size:9px;color:#f87171;text-transform:uppercase;
-                            letter-spacing:.12em;font-weight:700;padding-bottom:6px;">Spadek</td></tr>
-                        <tr><td bgcolor="#1a0808" align="center" style="background-color:#1a0808;
-                            {_FONT}font-size:26px;font-weight:900;color:#ef4444;
-                            letter-spacing:-.02em;">&minus;{abs(drop_pct):.1f}%</td></tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-              </td>
-            </tr>
+  <!-- location -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;
+      padding:0 28px 24px;{_FONT}font-size:13px;color:#4a6080;">
+    {location}
+  </td></tr>
 
-            <!-- savings -->
-            <tr>
-              <td bgcolor="#091428" style="background-color:#091428;border:1px solid #1a3a6e;
-                  border-radius:12px;padding:16px 20px;">
-                <table width="100%" cellpadding="0" cellspacing="0">
-                  <tr><td bgcolor="#091428" style="background-color:#091428;
-                      {_FONT}font-size:13px;color:#4a7aad;line-height:1.6;">
-                    💰 &nbsp;Oszczędność vs poprzednia cena:&nbsp;
-                    <strong style="color:#60a5fa;">{savings}</strong>
-                  </td></tr>
-                </table>
-              </td>
-            </tr>
-
-            <tr><td bgcolor="{_CARD}" style="background-color:{_CARD};height:28px;">&nbsp;</td></tr>
-
-            <!-- CTA -->
-            <tr>
-              <td bgcolor="{_CARD}" align="center"
-                  style="background-color:{_CARD};padding-bottom:32px;">
-                <a href="{listing.url}" target="_blank"
-                   style="{_FONT}display:inline-block;background-color:#dc2626;color:#ffffff;
-                          text-decoration:none;font-weight:700;font-size:15px;
-                          padding:15px 44px;border-radius:10px;letter-spacing:.02em;">
-                  Zobacz ogłoszenie &rarr;
-                </a>
-              </td>
-            </tr>
-
+  <!-- price boxes -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;padding:0 28px 20px;">
+    <table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_CARD}"
+           style="background-color:{_CARD}!important;">
+      <tr>
+        <!-- bylo -->
+        <td width="31%" bgcolor="{_SUB}" style="background-color:{_SUB}!important;
+            border:1px solid {_BDR};border-radius:10px;padding:14px 8px;text-align:center;">
+          <table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_SUB}"
+                 style="background-color:{_SUB}!important;">
+            <tr><td bgcolor="{_SUB}" align="center" style="background-color:{_SUB}!important;
+                {_FONT}font-size:9px;color:#2d4060;text-transform:uppercase;
+                letter-spacing:.1em;font-weight:700;padding-bottom:6px;">Było</td></tr>
+            <tr><td bgcolor="{_SUB}" align="center" style="background-color:{_SUB}!important;
+                {_FONT}font-size:15px;font-weight:700;color:#4a6080;
+                text-decoration:line-through;">{fmt(old_price)}</td></tr>
+          </table>
+        </td>
+        <!-- arrow -->
+        <td width="6%" bgcolor="{_CARD}" align="center"
+            style="background-color:{_CARD}!important;{_FONT}font-size:18px;color:#ef4444;">→</td>
+        <!-- teraz -->
+        <td width="31%" bgcolor="{_SUB}" style="background-color:{_SUB}!important;
+            border:1px solid {_BDR};border-radius:10px;padding:14px 8px;text-align:center;">
+          <table width="100%" cellpadding="0" cellspacing="0" bgcolor="{_SUB}"
+                 style="background-color:{_SUB}!important;">
+            <tr><td bgcolor="{_SUB}" align="center" style="background-color:{_SUB}!important;
+                {_FONT}font-size:9px;color:#2d4060;text-transform:uppercase;
+                letter-spacing:.1em;font-weight:700;padding-bottom:6px;">Teraz</td></tr>
+            <tr><td bgcolor="{_SUB}" align="center" style="background-color:{_SUB}!important;
+                {_FONT}font-size:15px;font-weight:700;color:#dde8f8;">{fmt(new_price)}</td></tr>
+          </table>
+        </td>
+        <td width="4%" bgcolor="{_CARD}" style="background-color:{_CARD}!important;">&nbsp;</td>
+        <!-- drop % -->
+        <td width="28%" bgcolor="#1a0808" style="background-color:#1a0808!important;
+            border:1px solid #7f1d1d;border-radius:10px;padding:14px 6px;text-align:center;">
+          <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#1a0808"
+                 style="background-color:#1a0808!important;">
+            <tr><td bgcolor="#1a0808" align="center" style="background-color:#1a0808!important;
+                {_FONT}font-size:9px;color:#f87171;text-transform:uppercase;
+                letter-spacing:.1em;font-weight:700;padding-bottom:6px;">Spadek</td></tr>
+            <tr><td bgcolor="#1a0808" align="center" style="background-color:#1a0808!important;
+                {_FONT}font-size:24px;font-weight:900;color:#ef4444;">&minus;{abs(drop_pct):.1f}%</td></tr>
           </table>
         </td>
       </tr>
-
-      {_email_footer("Otrzymujesz ten email, bo zapisałeś się na alerty cenowe na HomeCharts.")}
-
     </table>
-  </td>
+  </td></tr>
+
+  <!-- savings -->
+  <tr><td bgcolor="{_CARD}" style="background-color:{_CARD}!important;padding:0 28px 22px;">
+    <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#091428"
+           style="background-color:#091428!important;border:1px solid #1a3a6e;border-radius:10px;">
+      <tr><td bgcolor="#091428" style="background-color:#091428!important;padding:14px 18px;
+          {_FONT}font-size:13px;color:#4a7aad;line-height:1.6;">
+        💰 &nbsp;Oszczędność vs poprzednia cena:
+        <strong style="color:#60a5fa;">{savings}</strong>
+      </td></tr>
+    </table>
+  </td></tr>
+
+  <!-- CTA -->
+  <tr><td bgcolor="{_CARD}" align="center"
+      style="background-color:{_CARD}!important;padding:0 28px 28px;">
+    <a href="{listing.url}" target="_blank"
+       style="{_FONT}display:inline-block;background-color:#dc2626;color:#ffffff;
+              text-decoration:none;font-weight:700;font-size:15px;
+              padding:14px 42px;border-radius:10px;letter-spacing:.02em;">
+      Zobacz ogłoszenie &rarr;
+    </a>
+  </td></tr>
+
+  <!-- footer -->
+  <tr><td bgcolor="#060c18" style="background-color:#060c18!important;
+      padding:16px 28px;border-top:1px solid {_BDR};
+      {_FONT}font-size:11px;color:#2d4060;text-align:center;line-height:1.8;">
+    Otrzymujesz ten email, bo zapisałeś się na alerty cenowe na HomeCharts.<br/>
+    <a href="https://home-charts.com" style="color:#3a5c9a;text-decoration:none;">home-charts.com</a>
+    &nbsp;·&nbsp; &copy; 2026 HomeCharts
+  </td></tr>
+
+</table>
+<!-- ═══ END CARD ═══ -->
+
+</td>
 </tr>
 </table>
+</div>
+<!--[if mso]></td></tr></table><![endif]-->
 </body></html>"""
 
 
 class AlertRequest(BaseModel):
     listing_id: int
     email: str
+
+
+@app.post("/api/test-email")
+async def test_email(body: AlertRequest, db: Session = Depends(get_db)):
+    """Send a test welcome email bypassing the duplicate check."""
+    listing = db.query(Listing).filter(Listing.id == body.listing_id).first()
+    if not listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+    ok = _send_email(
+        body.email,
+        "🏠 [TEST] Zacząłeś śledzić nieruchomość — HomeCharts",
+        _welcome_email_html(listing),
+    )
+    return {"sent": ok, "to": body.email}
 
 
 @app.post("/api/alert")
