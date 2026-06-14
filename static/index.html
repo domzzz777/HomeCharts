@@ -724,14 +724,24 @@ function _cityMatches(listingCity, filterCity) {
   return pat ? pat.test((listingCity || '').trim()) : false;
 }
 
-// Albania always restricted to Tirana + Durres area
-const _ALBANIA_SHOWN = /^(tiran[aë]|durrë?s|durres)$/i;
+// Albania city display (no restriction — show all Albanian cities)
+const _ALBANIA_SHOWN = /.*/;
 
 function applyFilters() {
   const search       = id('search-input').value.toLowerCase().trim();
   const sort         = id('sort-select').value;
   const portal       = id('portal-select').value;
   const country      = id('country-select').value;
+
+  // When a specific country is selected, reset the min-drop slider to 0
+  // so ALL listings from that country are visible (not just ones with drops)
+  const slider = id('min-drop-slider');
+  const display = id('min-drop-display');
+  if (country && parseFloat(slider.value) > 0) {
+    slider.value = 0;
+    if (display) display.textContent = 'all';
+  }
+
   const minDrop      = parseFloat(id('min-drop-slider').value) || 0;
   const maxDrop      = parseFloat(id('max-drop-slider').value) || 50;
   const maxPriceRaw  = parseFloat(id('max-price-input').value) || 0;
